@@ -14,5 +14,4 @@ class StatisticsViewController: UIViewController {
         title = "Статистика"
     }
     
-
 }
