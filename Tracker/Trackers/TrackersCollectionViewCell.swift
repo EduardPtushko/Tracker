@@ -8,9 +8,15 @@
 import SwiftUI
 import UIKit
 
+protocol TrackersCollectionViewCellDelegate: AnyObject {
+    func didTapCompleteButton(of cell: TrackersCollectionViewCell)
+}
+
 class TrackersCollectionViewCell: UICollectionViewCell {
 
     static let identifier = "TrackersCollectionViewCell"
+    
+    weak var delegate: TrackersCollectionViewCellDelegate?
 
     private lazy var cardView: UIView = {
         let card = UIView()
@@ -43,7 +49,7 @@ class TrackersCollectionViewCell: UICollectionViewCell {
         return stackView
     }()
 
-    private lazy var countLabel: UILabel = {
+    lazy var countLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = UIFont.systemFont(ofSize: 12, weight: .medium)
@@ -52,26 +58,27 @@ class TrackersCollectionViewCell: UICollectionViewCell {
         return label
     }()
 
-    private lazy var plusButton: UIButton = {
+     lazy var plusButton: UIButton = {
         let button = UIButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setImage(UIImage(systemName: "plus"), for: .normal)
         button.tintColor = UIColor(resource: .trackerWhite)
         button.layer.cornerRadius = 17
         button.clipsToBounds = true
+        button.addTarget(self, action: #selector(completeButtonTapped), for: .touchUpInside)
         return button
     }()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        setupUI()
+        setupView()
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    private func setupUI() {
+    private func setupView() {
         contentView.addSubviews([cardView, bottomStackView])
         cardView.addSubviews([emojiLabel, titleLabel])
         bottomStackView.addArrangedSubview(countLabel)
@@ -142,6 +149,10 @@ class TrackersCollectionViewCell: UICollectionViewCell {
         emojiLabel.text = tracker.emoji
         titleLabel.text = tracker.name
         plusButton.backgroundColor = tracker.color
+    }
+    
+    @objc private func completeButtonTapped() {
+        delegate?.didTapCompleteButton(of: self)
     }
 }
 

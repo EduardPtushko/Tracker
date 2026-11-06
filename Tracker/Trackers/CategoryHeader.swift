@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import SwiftUI
 
 final class CategoryHeader: UICollectionReusableView {
 
@@ -45,3 +46,15 @@ final class CategoryHeader: UICollectionReusableView {
         fatalError("init(coder:) has not been implemented")
     }
 }
+
+#Preview("Category Header") {
+    ViewPreview {
+        let header = CategoryHeader()
+        header.titleLabel.text = "Категории"
+        header.backgroundColor = .systemGray6
+        return header
+    }
+    .frame(height: 60)
+    .frame(maxWidth: .infinity)
+}
+
