@@ -11,13 +11,26 @@ class TabBarController: UITabBarController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        setupTabBarAppearance()
         setUpTabs()
+    }
+
+    private func setupTabBarAppearance() {
+        tabBar.tintColor = .trackerBlue
+        tabBar.unselectedItemTintColor = .gray
+
+        let appearance = UITabBarAppearance()
+        appearance.configureWithDefaultBackground()
+        appearance.backgroundColor = .systemBackground
+
+        tabBar.standardAppearance = appearance
+        if #available(iOS 15.0, *) {
+            tabBar.scrollEdgeAppearance = appearance
+        }
     }
 
     private func setUpTabs() {
         let trackersViewController = TrackersViewController()
-        trackersViewController.navigationItem.largeTitleDisplayMode = .automatic
-
         let navTrackers = UINavigationController(
             rootViewController: trackersViewController
         )
@@ -26,12 +39,8 @@ class TabBarController: UITabBarController {
             image: UIImage(resource: .tabTrackers),
             selectedImage: nil
         )
-        navTrackers.navigationBar.prefersLargeTitles = true
-
+       
         let statisticsViewController = StatisticsViewController()
-        statisticsViewController.navigationItem.largeTitleDisplayMode =
-            .automatic
-
         let navStatistics = UINavigationController(
             rootViewController: statisticsViewController
         )
@@ -40,14 +49,12 @@ class TabBarController: UITabBarController {
             image: UIImage(resource: .tabStatistics),
             selectedImage: nil
         )
-        navStatistics.navigationBar.prefersLargeTitles = true
 
         self.viewControllers = [
             navTrackers,
             navStatistics,
         ]
     }
-
 }
 
 #Preview {
