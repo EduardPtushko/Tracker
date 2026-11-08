@@ -7,16 +7,19 @@
 
 import UIKit
 
-class CategoryViewController: UIViewController {
+final class CategoryViewController: UIViewController {
     private let emptyStateView = EmptyStateView()
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Категория"
+        navigationItem.hidesBackButton = true
         setupView()
     }
-    
+
     private func setupView() {
+        view.backgroundColor = .systemBackground
+        title = "Категория"
+
         view.addSubview(emptyStateView)
         emptyStateView.edgesToSuperview()
         emptyStateView.configure(
@@ -24,7 +27,6 @@ class CategoryViewController: UIViewController {
             text: "Привычки и события можно объединить по смыслу"
         )
     }
-    
 }
 
 #Preview {

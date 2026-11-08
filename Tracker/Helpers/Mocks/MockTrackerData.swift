@@ -14,8 +14,10 @@ import UIKit
         private static let runTrackerId = UUID()
         private static let swiftTrackerId = UUID()
         private static let bookTrackerId = UUID()
+        
+        static let defaultCategory = "Важное"
 
-        static let mockTracker = Tracker(
+        static let tracker = Tracker(
             id: UUID(),
             name: "Learn iOS Architecture",
             color: .systemBlue,
@@ -89,8 +91,10 @@ import UIKit
 
         static let completedTrackers: [TrackerRecord] = [
             TrackerRecord(id: waterTrackerId, date: Date()),
+            TrackerRecord(id: waterTrackerId, date: Date.daysAgo(1)),
             TrackerRecord(id: bookTrackerId, date: Date()),
             TrackerRecord(id: runTrackerId, date: Date.daysAgo(1)),
+            TrackerRecord(id: runTrackerId, date: Date.daysAgo(3)),
         ]
     }
 #endif

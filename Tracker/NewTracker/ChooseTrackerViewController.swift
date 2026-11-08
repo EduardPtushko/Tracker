@@ -8,7 +8,7 @@
 import UIKit
 
 final class ChooseTrackerViewController: UIViewController {
-    
+
     // MARK: - UI Elements
 
     private lazy var contentStack: UIStackView = {
@@ -25,7 +25,7 @@ final class ChooseTrackerViewController: UIViewController {
     private let irregularTrackerButton = TrackerButton(
         title: "Нерегулярное событие"
     )
-    
+
     // MARK: - Lifecycle
 
     override func viewDidLoad() {
@@ -35,9 +35,9 @@ final class ChooseTrackerViewController: UIViewController {
     }
 
     // MARK: - Private Methods
-    
+
     private func setupView() {
-        view.backgroundColor = .white
+        view.backgroundColor = .systemBackground
         title = "Создание трекера"
 
         view.addSubview(contentStack)

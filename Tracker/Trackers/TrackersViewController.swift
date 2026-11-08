@@ -7,7 +7,7 @@
 
 import UIKit
 
-class TrackersViewController: UIViewController {
+final class TrackersViewController: UIViewController {
 
     private lazy var collectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
@@ -31,7 +31,11 @@ class TrackersViewController: UIViewController {
         )
         let currentDate = Date()
         let calendar = Calendar.current
-        let minDate = calendar.date(byAdding: .year, value: -10, to: currentDate)
+        let minDate = calendar.date(
+            byAdding: .year,
+            value: -10,
+            to: currentDate
+        )
         let maxDate = calendar.date(byAdding: .year, value: 10, to: currentDate)
         datePicker.minimumDate = minDate
         datePicker.maximumDate = maxDate
@@ -56,12 +60,13 @@ class TrackersViewController: UIViewController {
     }()
 
     private let emptyStateView = EmptyStateView()
+
     var categories: [TrackerCategory] = [] {
         didSet {
             updateVisibleTrackers()
         }
     }
-    
+
     var visibleCategories: [TrackerCategory] = [] {
         didSet {
             collectionView.reloadData()
@@ -69,8 +74,18 @@ class TrackersViewController: UIViewController {
         }
     }
     var completedTrackers: [TrackerRecord] = []
-    
+
     var currentDate: Date = Date.now
+
+    init(categories: [TrackerCategory] = MockTrackerData.categories) {
+        self.categories = categories
+        self.completedTrackers = MockTrackerData.completedTrackers
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -78,12 +93,13 @@ class TrackersViewController: UIViewController {
         title = "Трекеры"
         navigationController?.navigationBar.prefersLargeTitles = true
         navigationItem.largeTitleDisplayMode = .automatic
-        
-        configureNavBarButtons()
+
         setupView()
-        updateBackgroundState()
         setupSearchController()
         configureFilterButton()
+        configureNavBarButtons()
+
+        updateVisibleTrackers()
     }
 
     override func viewDidLayoutSubviews() {
@@ -133,11 +149,29 @@ class TrackersViewController: UIViewController {
         ])
     }
 
+    private func configureNavBarButtons() {
+        let addButton = UIBarButtonItem(
+            image: UIImage(resource: .addTracker),
+            style: .plain,
+            target: self,
+            action: #selector(addTrackerButtonTapped)
+        )
+        addButton.tintColor = .trackerBlack
+
+        navigationItem.leftBarButtonItem = addButton
+        navigationItem.rightBarButtonItem = UIBarButtonItem(
+            customView: datePicker
+        )
+    }
+
     private func updateBackgroundState() {
-        if categories.isEmpty {
+        if visibleCategories.isEmpty {
+            let isSearching =
+                !(searchController.searchBar.text?.isEmpty ?? true)
             emptyStateView.configure(
                 image: UIImage(resource: .emptyListPlaceholder),
-                text: "Что будем отслеживать?"
+                text: isSearching
+                    ? "Ничего не найдено" : "Что будем отслеживать?"
             )
 
             collectionView.backgroundView = emptyStateView
@@ -148,47 +182,42 @@ class TrackersViewController: UIViewController {
         }
     }
 
-    private func configureNavBarButtons() {
-        let addButton = UIBarButtonItem(
-            image: UIImage(resource: .addTracker),
-            style: .plain,
-            target: self,
-            action: #selector(addTrackerButtonTapped)
-        )
+    private func updateVisibleTrackers() {
+        let currentDay = Calendar.current.component(.weekday, from: currentDate)
+        guard let weekDay = WeekDay(rawValue: currentDay) else { return }
 
-        navigationItem.leftBarButtonItem = addButton
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            customView: datePicker
-        )
+        let searchText = searchController.searchBar.text?.lowercased() ?? ""
+
+        visibleCategories = categories.compactMap({ category in
+
+            let filteredTrackers = category.trackers.filter { tracker in
+                let matchesDate = tracker.schedule?.contains(weekDay) ?? false
+                let matchesSearch =
+                    searchText.isEmpty
+                    || tracker.name.lowercased().contains(searchText)
+                return matchesDate && matchesSearch
+            }
+
+            return filteredTrackers.isEmpty
+                ? nil
+                : TrackerCategory(
+                    title: category.title,
+                    trackers: filteredTrackers
+                )
+        })
     }
 
     @objc private func addTrackerButtonTapped() {
-        let newTrackerViewController = UINavigationController(rootViewController:  ChooseTrackerViewController())
+        let newTrackerViewController = UINavigationController(
+            rootViewController: ChooseTrackerViewController()
+        )
         present(newTrackerViewController, animated: true)
     }
 
     @objc private func datePickerValueChanged(_ sender: UIDatePicker) {
         self.currentDate = sender.date
-        
+
         updateVisibleTrackers()
-    }
-    
-    private func updateVisibleTrackers() {
-        let currentDay = Calendar.current.component(.weekday, from: currentDate)
-        guard let weekDay = WeekDay(rawValue: currentDay) else { return }
-        
-        visibleCategories = categories.compactMap({ category in
-            
-            let filteredTrackers = category.trackers.filter { tracker in
-                if let schedule = tracker.schedule {
-                    return schedule.contains(weekDay)
-                }
-                
-                return false
-            }
-            
-            return TrackerCategory(title: category.title, trackers: filteredTrackers)
-        })
     }
 
 }
@@ -209,7 +238,6 @@ extension TrackersViewController: UICollectionViewDataSource {
         _ collectionView: UICollectionView,
         cellForItemAt indexPath: IndexPath
     ) -> UICollectionViewCell {
-
         guard
             let cell =
                 collectionView.dequeueReusableCell(
@@ -219,9 +247,25 @@ extension TrackersViewController: UICollectionViewDataSource {
         else {
             return UICollectionViewCell()
         }
+        let tracker = visibleCategories[indexPath.section].trackers[
+            indexPath.row
+        ]
         cell.delegate = self
-        let trackers = visibleCategories[indexPath.section].trackers
-        cell.configure(with: trackers[indexPath.row])
+
+        let isCompletedToday = completedTrackers.contains {
+            $0.id == tracker.id
+                && Calendar.current.isDate($0.date, inSameDayAs: currentDate)
+        }
+        let completedDaysCount = completedTrackers.filter {
+            $0.id == tracker.id
+        }.count
+
+        cell.configure(
+            with: tracker,
+            isCompleted: isCompletedToday,
+            completedDays: completedDaysCount
+        )
+
         return cell
     }
 
@@ -241,7 +285,7 @@ extension TrackersViewController: UICollectionViewDataSource {
                 return UICollectionReusableView()
             }
 
-            let categoryTitle = categories[indexPath.section]
+            let categoryTitle = visibleCategories[indexPath.section]
                 .title
             header.titleLabel.text = categoryTitle
 
@@ -292,50 +336,61 @@ extension TrackersViewController: UICollectionViewDelegateFlowLayout {
 
 extension TrackersViewController: UISearchResultsUpdating {
     func updateSearchResults(for searchController: UISearchController) {
+        updateVisibleTrackers()
     }
 }
 
 extension TrackersViewController: TrackersCollectionViewCellDelegate {
     func didTapCompleteButton(of cell: TrackersCollectionViewCell) {
-        guard let indexPath = collectionView.indexPath(for: cell) else { return }
-        
-        let tracker = visibleCategories[indexPath.section].trackers[indexPath.row]
-        let button = cell.plusButton
-        let countLabel = cell.countLabel
-        let currentBackground = button.backgroundColor ?? .systemBlue
-        
-        if self.completedTrackers.contains(where: { $0.id == tracker.id && $0.date == currentDate}) {
-            self.completedTrackers.removeAll(where: { $0.id == tracker.id && $0.date == currentDate})
-            button.setImage(UIImage(systemName: "plus"), for: .normal)
-            button.backgroundColor = currentBackground.withAlphaComponent(1)
-            countLabel.text = "0 дней"
+        guard let indexPath = collectionView.indexPath(for: cell) else {
+            return
+        }
+
+        let tracker = visibleCategories[indexPath.section].trackers[
+            indexPath.row
+        ]
+        if currentDate > Date() && !Calendar.current.isDateInToday(currentDate)
+        {
+            return
+        }
+
+        let index = completedTrackers.firstIndex { record in
+            record.id == tracker.id
+                && Calendar.current.isDate(
+                    record.date,
+                    inSameDayAs: currentDate
+                )
+        }
+
+        if let index {
+            completedTrackers.remove(at: index)
         } else {
             let trackerRecord = TrackerRecord(id: tracker.id, date: currentDate)
-            self.completedTrackers.append(trackerRecord)
-            button.setImage(UIImage(systemName: "checkmark"), for: .normal)
-            button.backgroundColor = currentBackground.withAlphaComponent(0.5)
-            countLabel.text = "1 день"
+            completedTrackers.append(trackerRecord)
         }
+        collectionView.reloadItems(at: [indexPath])
     }
-    
+
 }
 
-#Preview("Empty categories") {
+#Preview("Categories") {
     let navController = UINavigationController(
         rootViewController:
             TrackersViewController()
     )
     navController.navigationBar.prefersLargeTitles = true
+
     return navController
 }
 
-#Preview("Categories") {
+#Preview("Empty categories") {
     let trackerController = TrackersViewController()
     let navController = UINavigationController(
         rootViewController: trackerController
     )
     navController.navigationBar.prefersLargeTitles = true
-    trackerController.categories = MockTrackerData.categories
+    trackerController.categories = []
+    trackerController.completedTrackers = []
 
     return navController
 }

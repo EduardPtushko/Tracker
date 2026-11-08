@@ -7,7 +7,7 @@
 
 import UIKit
 
-class ScheduleViewController: UIViewController {
+final class ScheduleViewController: UIViewController {
     
     private let daysOfWeek = [
         "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота",
@@ -30,7 +30,7 @@ class ScheduleViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        navigationItem.hidesBackButton = true
         setupView()
     }
 

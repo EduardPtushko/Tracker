@@ -12,7 +12,7 @@ enum TrackerType {
     case irregular
 }
 
-class ConfigureTrackerViewController: UIViewController {
+final class ConfigureTrackerViewController: UIViewController {
 
     private let type: TrackerType
 
@@ -154,7 +154,6 @@ class ConfigureTrackerViewController: UIViewController {
         setupActions()
     }
 
-    
     private func setupView() {
         title = type == .habit ? "Новая привычка" : "Новое нерегулярное событие"
         view.backgroundColor = .systemBackground
@@ -163,25 +162,25 @@ class ConfigureTrackerViewController: UIViewController {
 
         embedSubviews()
     }
-    
+
     private func embedSubviews() {
         view.addSubview(scrollView)
         view.addSubview(buttonsStack)
         scrollView.addSubview(contentStack)
-        
+
         textFieldContainer.addSubview(textField)
         inputStack.addArrangedSubview(textFieldContainer)
         inputStack.addArrangedSubview(errorLabel)
         contentStack.addArrangedSubview(inputStack)
-        
+
         optionsContainer.addSubview(optionsStack)
         contentStack.addArrangedSubview(optionsContainer)
         optionsStack.addArrangedSubview(categoryRow)
-        
+
         if type == .habit {
             optionsStack.addArrangedSubview(scheduleRow)
         }
-        
+
         buttonsStack.addArrangedSubview(cancelButton)
         buttonsStack.addArrangedSubview(createButton)
     }
@@ -254,21 +253,30 @@ class ConfigureTrackerViewController: UIViewController {
                 equalTo: optionsContainer.bottomAnchor
             ),
         ]
-        
+
         configureOptionsContainer()
         NSLayoutConstraint.activate(constraints)
     }
-    
+
     private func configureOptionsContainer() {
         let height: CGFloat = type == .habit ? 150 : 75
-        optionsContainer.heightAnchor.constraint(equalToConstant: height).isActive = true
+        optionsContainer.heightAnchor.constraint(equalToConstant: height)
+            .isActive = true
 
         if type == .habit {
             optionsContainer.addSubview(separator)
             NSLayoutConstraint.activate([
-                separator.leadingAnchor.constraint(equalTo: optionsContainer.leadingAnchor, constant: 16),
-                separator.trailingAnchor.constraint(equalTo: optionsContainer.trailingAnchor, constant: -16),
-                separator.centerYAnchor.constraint(equalTo: optionsContainer.centerYAnchor)
+                separator.leadingAnchor.constraint(
+                    equalTo: optionsContainer.leadingAnchor,
+                    constant: 16
+                ),
+                separator.trailingAnchor.constraint(
+                    equalTo: optionsContainer.trailingAnchor,
+                    constant: -16
+                ),
+                separator.centerYAnchor.constraint(
+                    equalTo: optionsContainer.centerYAnchor
+                ),
             ])
         }
     }
@@ -296,8 +304,16 @@ class ConfigureTrackerViewController: UIViewController {
                 for: .touchUpInside
             )
         }
-        createButton.addTarget(self, action: #selector(didTapCreateButton), for: .touchUpInside)
-        cancelButton.addTarget(self, action: #selector(didTapCancelButton), for: .touchUpInside)
+        createButton.addTarget(
+            self,
+            action: #selector(didTapCreateButton),
+            for: .touchUpInside
+        )
+        cancelButton.addTarget(
+            self,
+            action: #selector(didTapCancelButton),
+            for: .touchUpInside
+        )
     }
 
     private func makeOptionRow(title: String) -> UIButton {
@@ -357,11 +373,11 @@ class ConfigureTrackerViewController: UIViewController {
             animated: true
         )
     }
-    
+
     @objc private func didTapCreateButton() {
         dismiss(animated: true, completion: nil)
     }
-    
+
     @objc private func didTapCancelButton() {
         dismiss(animated: true, completion: nil)
     }
@@ -386,13 +402,13 @@ extension ConfigureTrackerViewController: UITextFieldDelegate {
             UIView.animate(withDuration: 0.2) { [weak self] in
                 self?.view.layoutIfNeeded()
             }
-            
+
         } else {
             self.errorLabel.isHidden = true
             UIView.animate(withDuration: 0.2) { [weak self] in
                 self?.view.layoutIfNeeded()
             }
-            
+
         }
         return updatedText.count <= 38
     }

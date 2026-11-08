@@ -15,7 +15,7 @@ protocol TrackersCollectionViewCellDelegate: AnyObject {
 class TrackersCollectionViewCell: UICollectionViewCell {
 
     static let identifier = "TrackersCollectionViewCell"
-    
+
     weak var delegate: TrackersCollectionViewCellDelegate?
 
     private lazy var cardView: UIView = {
@@ -49,7 +49,7 @@ class TrackersCollectionViewCell: UICollectionViewCell {
         return stackView
     }()
 
-    lazy var countLabel: UILabel = {
+    private lazy var countLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = UIFont.systemFont(ofSize: 12, weight: .medium)
@@ -58,14 +58,18 @@ class TrackersCollectionViewCell: UICollectionViewCell {
         return label
     }()
 
-     lazy var plusButton: UIButton = {
+    private lazy var plusButton: UIButton = {
         let button = UIButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setImage(UIImage(systemName: "plus"), for: .normal)
         button.tintColor = UIColor(resource: .trackerWhite)
         button.layer.cornerRadius = 17
         button.clipsToBounds = true
-        button.addTarget(self, action: #selector(completeButtonTapped), for: .touchUpInside)
+        button.addTarget(
+            self,
+            action: #selector(completeButtonTapped),
+            for: .touchUpInside
+        )
         return button
     }()
 
@@ -76,6 +80,21 @@ class TrackersCollectionViewCell: UICollectionViewCell {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        delegate = nil
+
+        titleLabel.text = nil
+        emojiLabel.text = nil
+        countLabel.text = "0 дней"
+
+        plusButton.setImage(UIImage(systemName: "plus"), for: .normal)
+        plusButton.alpha = 1.0
+        plusButton.backgroundColor = nil
+
+        cardView.backgroundColor = nil
     }
 
     private func setupView() {
@@ -144,15 +163,47 @@ class TrackersCollectionViewCell: UICollectionViewCell {
         ])
     }
 
-    func configure(with tracker: Tracker) {
+    func configure(with tracker: Tracker, isCompleted: Bool, completedDays: Int)
+    {
         cardView.backgroundColor = tracker.color
         emojiLabel.text = tracker.emoji
         titleLabel.text = tracker.name
         plusButton.backgroundColor = tracker.color
+        countLabel.text = formatDaysString(for: completedDays)
+
+        if isCompleted {
+            let image = UIImage(systemName: "checkmark")?.withConfiguration(
+                UIImage.SymbolConfiguration(pointSize: 12, weight: .bold)
+            )
+            plusButton.setImage(image, for: .normal)
+            plusButton.alpha = 0.5
+        } else {
+            let image = UIImage(systemName: "plus")?.withConfiguration(
+                UIImage.SymbolConfiguration(pointSize: 12, weight: .bold)
+            )
+        }
     }
-    
+
     @objc private func completeButtonTapped() {
         delegate?.didTapCompleteButton(of: self)
+    }
+
+    private func formatDaysString(for days: Int) -> String {
+        let remainder10 = days % 10
+        let remainder100 = days % 100
+
+        if remainder100 >= 11 && remainder100 <= 19 {
+            return "\(days) дней"
+        }
+
+        switch remainder10 {
+        case 1:
+            return "\(days) день"
+        case 2, 3, 4:
+            return "\(days) дня"
+        default:
+            return "\(days) дней"
+        }
     }
 }
 
@@ -166,7 +217,11 @@ class TrackersCollectionViewCell: UICollectionViewCell {
             frame: CGRect(x: 0, y: 0, width: width, height: height)
         )
 
-        cell.configure(with: MockTrackerData.mockTracker)
+        cell.configure(
+            with: MockTrackerData.tracker,
+            isCompleted: true,
+            completedDays: 4
+        )
 
         return ViewPreview { cell }
     }
