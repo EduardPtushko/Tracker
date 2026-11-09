@@ -7,14 +7,25 @@
 
 import UIKit
 
-enum TrackerType {
-    case habit
-    case irregular
+protocol ConfigureTrackerViewControllerDelegate: AnyObject {
+    func didCreateTracker(_ tracker: Tracker, in categoryTitle: String)
 }
 
 final class ConfigureTrackerViewController: UIViewController {
 
+    enum TrackerType {
+        case habit
+        case irregular
+    }
+
+    weak var delegate: ConfigureTrackerViewControllerDelegate?
+
+    var schedule: Set<WeekDay> = []
+    var category: String?
+
     private let type: TrackerType
+
+    // MARK: - UI Elements
 
     private let createButton = CreateTrackerButton(
         title: "Создать",
@@ -87,6 +98,11 @@ final class ConfigureTrackerViewController: UIViewController {
             frame: CGRect(x: 0, y: 0, width: 16, height: 1)
         )
         textField.rightViewMode = .always
+        textField.addTarget(
+            self,
+            action: #selector(textFieldDidChange),
+            for: .editingChanged
+        )
         return textField
     }()
 
@@ -115,6 +131,7 @@ final class ConfigureTrackerViewController: UIViewController {
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
         stack.distribution = .fillEqually
+        stack.alignment = .fill
         return stack
     }()
 
@@ -147,6 +164,8 @@ final class ConfigureTrackerViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
 
+    // MARK: - Lifecycle
+
     override func viewDidLoad() {
         super.viewDidLoad()
         setupView()
@@ -154,11 +173,18 @@ final class ConfigureTrackerViewController: UIViewController {
         setupActions()
     }
 
+    // MARK: - Private Methods
+
     private func setupView() {
         title = type == .habit ? "Новая привычка" : "Новое нерегулярное событие"
         view.backgroundColor = .systemBackground
         textField.delegate = self
         createButton.isEnabled = false
+
+        let defaultCategoryName = MockTrackerData.defaultCategory
+        self.category = defaultCategoryName
+
+        updateSubtitle(for: categoryRow, text: defaultCategoryName)
 
         embedSubviews()
     }
@@ -186,7 +212,7 @@ final class ConfigureTrackerViewController: UIViewController {
     }
 
     private func setupConstraints() {
-        var constraints = [
+        let constraints = [
             buttonsStack.bottomAnchor.constraint(
                 equalTo: view.safeAreaLayoutGuide.bottomAnchor,
                 constant: -16
@@ -297,6 +323,7 @@ final class ConfigureTrackerViewController: UIViewController {
             action: #selector(didTapCategory),
             for: .touchUpInside
         )
+
         if type == .habit {
             scheduleRow.addTarget(
                 self,
@@ -319,39 +346,55 @@ final class ConfigureTrackerViewController: UIViewController {
     private func makeOptionRow(title: String) -> UIButton {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.contentEdgeInsets = UIEdgeInsets(
-            top: 16,
-            left: 0,
-            bottom: 16,
-            right: 0
-        )
         button.backgroundColor = .clear
 
+        let labelStack = UIStackView()
+        labelStack.translatesAutoresizingMaskIntoConstraints = false
+        labelStack.axis = .vertical
+        labelStack.alignment = .leading
+        labelStack.spacing = 2
+        labelStack.isUserInteractionEnabled = false
+
         let titleLabel = UILabel()
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.text = title
         titleLabel.textColor = .label
         titleLabel.font = .systemFont(ofSize: 17, weight: .regular)
+
+        let subtitleLabel = UILabel()
+        subtitleLabel.textColor = .systemGray
+        subtitleLabel.font = .systemFont(ofSize: 17, weight: .regular)
+        subtitleLabel.isHidden = true
+
+        labelStack.addArrangedSubview(titleLabel)
+        labelStack.addArrangedSubview(subtitleLabel)
 
         let chevron = UIImageView(image: UIImage(systemName: "chevron.right"))
         chevron.tintColor = .systemGray3
         chevron.translatesAutoresizingMaskIntoConstraints = false
 
-        button.addSubview(titleLabel)
+        button.addSubview(labelStack)
         button.addSubview(chevron)
 
         NSLayoutConstraint.activate([
-            titleLabel.leadingAnchor.constraint(
+            labelStack.leadingAnchor.constraint(
                 equalTo: button.leadingAnchor,
                 constant: 16
             ),
-            titleLabel.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+            labelStack.trailingAnchor.constraint(
+                equalTo: chevron.leadingAnchor,
+                constant: -16
+            ),
+            labelStack.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+
             chevron.trailingAnchor.constraint(
                 equalTo: button.trailingAnchor,
                 constant: -16
             ),
             chevron.centerYAnchor.constraint(equalTo: button.centerYAnchor),
-            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 56),
+            chevron.widthAnchor.constraint(equalToConstant: 11),
+            chevron.heightAnchor.constraint(equalToConstant: 18),
+
+            button.heightAnchor.constraint(equalToConstant: 75),
         ])
 
         return button
@@ -365,21 +408,85 @@ final class ConfigureTrackerViewController: UIViewController {
             scheduleViewController,
             animated: true
         )
+        scheduleViewController.delegate = self
     }
+
     @objc private func didTapCategory() {
-        let categoryViewController = CategoryViewController()
-        navigationController?.pushViewController(
-            categoryViewController,
-            animated: true
-        )
+        //        let categoryViewController = CategoryViewController()
+        //        navigationController?.pushViewController(
+        //            categoryViewController,
+        //            animated: true
+        //        )
     }
 
     @objc private func didTapCreateButton() {
-        dismiss(animated: true, completion: nil)
+        guard let category, let text = textField.text else { return }
+        let tracker = Tracker(
+            id: UUID(),
+            name: text,
+            color: UIColor.red,
+            emoji: "😀",
+            schedule: type == .habit ? schedule : nil
+        )
+
+        delegate?.didCreateTracker(tracker, in: category)
+
+        view.window?.rootViewController?.dismiss(
+            animated: true,
+            completion: nil
+        )
     }
 
     @objc private func didTapCancelButton() {
+        clearData()
         dismiss(animated: true, completion: nil)
+    }
+
+    @objc private func textFieldDidChange(_ textField: UITextField) {
+        updateCreateButtonState()
+    }
+
+    private func updateCreateButtonState() {
+        createButton.isEnabled = isEnabled()
+    }
+}
+
+extension ConfigureTrackerViewController {
+    private func updateSubtitle(for button: UIButton, text: String?) {
+        guard
+            let labelStack = button.subviews.compactMap({ $0 as? UIStackView })
+                .first,
+            let subtitleLabel = labelStack.arrangedSubviews.last as? UILabel
+        else {
+            return
+        }
+
+        if let text {
+            subtitleLabel.text = text
+            subtitleLabel.isHidden = false
+        } else {
+            subtitleLabel.isHidden = true
+        }
+
+        UIView.animate(withDuration: 0.2) {
+            self.view.layoutIfNeeded()
+        }
+    }
+
+    private func isEnabled() -> Bool {
+        let text = textField.text ?? ""
+        let isFilled = !text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty
+
+        return type == .habit
+            ? !schedule.isEmpty && category != nil && isFilled
+            : category != nil && isFilled
+    }
+
+    private func clearData() {
+        category = nil
+        schedule = []
+        textField.text = ""
     }
 }
 
@@ -419,9 +526,43 @@ extension ConfigureTrackerViewController: UITextFieldDelegate {
     }
 }
 
-#Preview {
+extension ConfigureTrackerViewController: ScheduleViewControllerDelegate {
+    func didSelectSchedule(schedule: Set<WeekDay>) {
+        self.schedule = schedule
+
+        updateScheduleRowSubtitle()
+        updateCreateButtonState()
+    }
+
+    private func updateScheduleRowSubtitle() {
+        guard type == .habit else { return }
+
+        if schedule.count == 7 {
+            updateSubtitle(for: scheduleRow, text: "Каждый день")
+        } else if !schedule.isEmpty {
+            let sortedDays = schedule.sorted { $0.rawValue < $1.rawValue }
+            let daysText = sortedDays.map { $0.shortName }.joined(
+                separator: ", "
+            )
+            updateSubtitle(for: scheduleRow, text: daysText)
+        } else {
+            updateSubtitle(for: scheduleRow, text: nil)
+        }
+    }
+}
+
+// MARK: - Preview
+
+#Preview("Habit") {
     UINavigationController(
         rootViewController:
             ConfigureTrackerViewController(type: .habit)
+    )
+}
+
+#Preview("Irregular") {
+    UINavigationController(
+        rootViewController:
+            ConfigureTrackerViewController(type: .irregular)
     )
 }

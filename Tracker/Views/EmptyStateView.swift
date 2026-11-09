@@ -7,7 +7,7 @@
 
 import UIKit
 
-class EmptyStateView: UIView {
+final class EmptyStateView: UIView {
 
     // MARK: - UI Elements
 
@@ -49,7 +49,7 @@ class EmptyStateView: UIView {
         // This view is not initialized via Storyboard
         fatalError("init(coder:) has not been implemented")
     }
-    
+
     // MARK: - Private Methods
 
     private func setupView() {
@@ -78,6 +78,8 @@ class EmptyStateView: UIView {
     }
 
 }
+
+// MARK: - Previews
 
 #Preview("One line") {
     let emptyStateView = EmptyStateView()

@@ -8,7 +8,7 @@
 import SwiftUI
 import UIKit
 
-class CreateTrackerButton: UIButton {
+final class CreateTrackerButton: UIButton {
 
     enum Style {
         case primary
@@ -34,108 +34,67 @@ class CreateTrackerButton: UIButton {
 
     override var isEnabled: Bool {
         didSet {
-            updateBackgroundColor()
+            if style == .primary {
+                backgroundColor = isEnabled ? .trackerBlack : .trackerGray
+            }
         }
     }
 
     private func setupView(title: String) {
         translatesAutoresizingMaskIntoConstraints = false
-        setTitle(title, for: .normal)
         layer.cornerRadius = 16
-
+        layer.masksToBounds = true
         titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
-        titleLabel?.adjustsFontSizeToFitWidth = false
+        setTitle(title, for: .normal)
 
         switch style {
         case .primary:
-            backgroundColor = .trackerBlack
             setTitleColor(.trackerWhite, for: .normal)
+            setTitleColor(.trackerWhite, for: .disabled)
+            backgroundColor = isEnabled ? .trackerBlack : .trackerGray
+
         case .cancel:
             backgroundColor = .clear
-            setTitleColor(.trackerRed, for: .normal)
             layer.borderWidth = 1
             layer.borderColor = UIColor.trackerRed.cgColor
+            setTitleColor(.trackerRed, for: .normal)
         }
-        updateBackgroundColor()
-    }
 
-    private func updateBackgroundColor() {
-        switch style {
-        case .primary:
-            backgroundColor = isEnabled ? .trackerBlack : .trackerGray
-        case .cancel:
-            backgroundColor = .clear
-        }
     }
 }
+
+// MARK: - Preview
 
 #Preview("Tracker Buttons") {
-    let containerStack = UIStackView()
-    containerStack.axis = .vertical
-    containerStack.spacing = 16
-    containerStack.translatesAutoresizingMaskIntoConstraints = false
+    VStack {
+        ViewPreview {
+            let containerStack = UIStackView()
+            containerStack.axis = .vertical
+            containerStack.spacing = 16
 
-    let createButton = CreateTrackerButton(title: "Создать", style: .primary)
-    let cancelButton = CreateTrackerButton(title: "Отменить", style: .cancel)
+            containerStack.translatesAutoresizingMaskIntoConstraints = true
 
-    let disabledButton = CreateTrackerButton(
-        title: "Неактивная",
-        style: .primary
-    )
-    disabledButton.isEnabled = false
+            let createButton = CreateTrackerButton(
+                title: "Создать",
+                style: .primary
+            )
+            let cancelButton = CreateTrackerButton(
+                title: "Отменить",
+                style: .cancel
+            )
+            let disabledButton = CreateTrackerButton(
+                title: "Неактивная",
+                style: .primary
+            )
+            disabledButton.isEnabled = false
 
-    containerStack.addArrangedSubview(createButton)
-    containerStack.addArrangedSubview(cancelButton)
-    containerStack.addArrangedSubview(disabledButton)
+            containerStack.addArrangedSubview(createButton)
+            containerStack.addArrangedSubview(cancelButton)
+            containerStack.addArrangedSubview(disabledButton)
 
-    let viewController = UIViewController()
-    viewController.view.backgroundColor = .systemBackground
-    viewController.view.addSubview(containerStack)
-
-    NSLayoutConstraint.activate([
-        containerStack.centerXAnchor.constraint(
-            equalTo: viewController.view.centerXAnchor
-        ),
-        containerStack.centerYAnchor.constraint(
-            equalTo: viewController.view.centerYAnchor
-        ),
-        containerStack.leadingAnchor.constraint(
-            equalTo: viewController.view.leadingAnchor,
-            constant: 20
-        ),
-        containerStack.trailingAnchor.constraint(
-            equalTo: viewController.view.trailingAnchor,
-            constant: -20
-        ),
-    ])
-
-    return viewController
-}
-
-#Preview("Tracker Buttons - Dark") {
-    let containerStack = UIStackView()
-    containerStack.axis = .vertical
-    containerStack.spacing = 16
-    containerStack.translatesAutoresizingMaskIntoConstraints = false
-
-    let createButton = CreateTrackerButton(title: "Создать", style: .primary)
-    let cancelButton = CreateTrackerButton(title: "Отменить", style: .cancel)
-
-    containerStack.addArrangedSubview(createButton)
-    containerStack.addArrangedSubview(cancelButton)
-
-    let viewController = UIViewController()
-    
-    viewController.overrideUserInterfaceStyle = .dark
-    viewController.view.backgroundColor = .systemBackground
-    viewController.view.addSubview(containerStack)
-
-    NSLayoutConstraint.activate([
-        containerStack.centerXAnchor.constraint(equalTo: viewController.view.centerXAnchor),
-        containerStack.centerYAnchor.constraint(equalTo: viewController.view.centerYAnchor),
-        containerStack.leadingAnchor.constraint(equalTo: viewController.view.leadingAnchor, constant: 20),
-        containerStack.trailingAnchor.constraint(equalTo: viewController.view.trailingAnchor, constant: -20),
-    ])
-
-    return viewController
+            return containerStack
+        }
+    }
+    .padding(.horizontal, 20)
+    .frame(height: 212)
 }

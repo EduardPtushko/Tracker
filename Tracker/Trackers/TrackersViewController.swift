@@ -9,6 +9,8 @@ import UIKit
 
 final class TrackersViewController: UIViewController {
 
+    // MARK: - UI Elements
+
     private lazy var collectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         let collectionView = UICollectionView(
@@ -61,6 +63,8 @@ final class TrackersViewController: UIViewController {
 
     private let emptyStateView = EmptyStateView()
 
+    // MARK: - Public Properties
+
     var categories: [TrackerCategory] = [] {
         didSet {
             updateVisibleTrackers()
@@ -73,9 +77,11 @@ final class TrackersViewController: UIViewController {
             updateBackgroundState()
         }
     }
-    var completedTrackers: [TrackerRecord] = []
 
+    var completedTrackers: [TrackerRecord] = []
     var currentDate: Date = Date.now
+
+    // MARK: - Init
 
     init(categories: [TrackerCategory] = MockTrackerData.categories) {
         self.categories = categories
@@ -86,6 +92,8 @@ final class TrackersViewController: UIViewController {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+
+    // MARK: - Lifecycles
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -106,6 +114,8 @@ final class TrackersViewController: UIViewController {
         super.viewDidLayoutSubviews()
         datePicker.clearCompactBackground()
     }
+
+    // MARK: - Private Methods
 
     private func setupSearchController() {
         searchController.searchResultsUpdater = self
@@ -133,6 +143,19 @@ final class TrackersViewController: UIViewController {
 
         collectionView.dataSource = self
         collectionView.delegate = self
+        collectionView.contentInset = UIEdgeInsets(
+            top: 0,
+            left: 0,
+            bottom: 82,
+            right: 0
+        )
+
+        collectionView.scrollIndicatorInsets = UIEdgeInsets(
+            top: 0,
+            left: 0,
+            bottom: 82,
+            right: 0
+        )
     }
 
     private func configureFilterButton() {
@@ -189,12 +212,17 @@ final class TrackersViewController: UIViewController {
         let searchText = searchController.searchBar.text?.lowercased() ?? ""
 
         visibleCategories = categories.compactMap({ category in
-
             let filteredTrackers = category.trackers.filter { tracker in
-                let matchesDate = tracker.schedule?.contains(weekDay) ?? false
+                let matchesDate: Bool
                 let matchesSearch =
                     searchText.isEmpty
                     || tracker.name.lowercased().contains(searchText)
+
+                if let schedule = tracker.schedule {
+                    matchesDate = schedule.contains(weekDay)
+                } else {
+                    matchesDate = true
+                }
                 return matchesDate && matchesSearch
             }
 
@@ -208,9 +236,14 @@ final class TrackersViewController: UIViewController {
     }
 
     @objc private func addTrackerButtonTapped() {
-        let newTrackerViewController = UINavigationController(
-            rootViewController: ChooseTrackerViewController()
+        let chooseTrackerViewController = TrackerTypeSelectionViewController(
+            delegate: self
         )
+
+        let newTrackerViewController = UINavigationController(
+            rootViewController: chooseTrackerViewController
+        )
+
         present(newTrackerViewController, animated: true)
     }
 
@@ -221,6 +254,8 @@ final class TrackersViewController: UIViewController {
     }
 
 }
+
+// MARK: - UICollectionViewDataSource
 
 extension TrackersViewController: UICollectionViewDataSource {
     func numberOfSections(in collectionView: UICollectionView) -> Int {
@@ -295,6 +330,8 @@ extension TrackersViewController: UICollectionViewDataSource {
     }
 }
 
+// MARK: - UICollectionViewDelegateFlowLayout
+
 extension TrackersViewController: UICollectionViewDelegateFlowLayout {
     func collectionView(
         _ collectionView: UICollectionView,
@@ -340,6 +377,8 @@ extension TrackersViewController: UISearchResultsUpdating {
     }
 }
 
+// MARK: - TrackersCollectionViewCellDelegate
+
 extension TrackersViewController: TrackersCollectionViewCellDelegate {
     func didTapCompleteButton(of cell: TrackersCollectionViewCell) {
         guard let indexPath = collectionView.indexPath(for: cell) else {
@@ -372,6 +411,34 @@ extension TrackersViewController: TrackersCollectionViewCellDelegate {
     }
 
 }
+
+// MARK: - ConfigureTrackerViewControllerDelegate
+
+extension TrackersViewController: ConfigureTrackerViewControllerDelegate {
+    func didCreateTracker(_ tracker: Tracker, in categoryTitle: String) {
+        if let index = categories.firstIndex(where: {
+            $0.title == categoryTitle
+        }) {
+            var updatedTrackers = categories[index].trackers
+            updatedTrackers.append(tracker)
+
+            categories[index] = TrackerCategory(
+                title: categoryTitle,
+                trackers: updatedTrackers
+            )
+        } else {
+            let newCategory = TrackerCategory(
+                title: categoryTitle,
+                trackers: [tracker]
+            )
+            categories.append(newCategory)
+        }
+
+    }
+
+}
+
+// MARK: - Previews
 
 #Preview("Categories") {
     let navController = UINavigationController(

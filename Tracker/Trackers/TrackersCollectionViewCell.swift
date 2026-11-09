@@ -12,11 +12,14 @@ protocol TrackersCollectionViewCellDelegate: AnyObject {
     func didTapCompleteButton(of cell: TrackersCollectionViewCell)
 }
 
-class TrackersCollectionViewCell: UICollectionViewCell {
+final class TrackersCollectionViewCell: UICollectionViewCell {
+
+    // MARK: - Public Properties
 
     static let identifier = "TrackersCollectionViewCell"
-
     weak var delegate: TrackersCollectionViewCellDelegate?
+
+    // MARK: - UI Elements
 
     private lazy var cardView: UIView = {
         let card = UIView()
@@ -73,9 +76,12 @@ class TrackersCollectionViewCell: UICollectionViewCell {
         return button
     }()
 
+    // MARK: - Init
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupView()
+        setupConstraints()
     }
 
     required init?(coder: NSCoder) {
@@ -85,24 +91,69 @@ class TrackersCollectionViewCell: UICollectionViewCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         delegate = nil
-
         titleLabel.text = nil
         emojiLabel.text = nil
-        countLabel.text = "0 дней"
-
+        countLabel.text = nil
         plusButton.setImage(UIImage(systemName: "plus"), for: .normal)
         plusButton.alpha = 1.0
         plusButton.backgroundColor = nil
-
         cardView.backgroundColor = nil
     }
+
+    // MARK: - Private Methods
 
     private func setupView() {
         contentView.addSubviews([cardView, bottomStackView])
         cardView.addSubviews([emojiLabel, titleLabel])
         bottomStackView.addArrangedSubview(countLabel)
         bottomStackView.addArrangedSubview(plusButton)
+    }
 
+    @objc private func completeButtonTapped() {
+        delegate?.didTapCompleteButton(of: self)
+    }
+
+    private func formatDaysString(for days: Int) -> String {
+        let remainder10 = days % 10
+        let remainder100 = days % 100
+
+        if remainder100 >= 11 && remainder100 <= 19 {
+            return "\(days) дней"
+        }
+
+        switch remainder10 {
+        case 1:
+            return "\(days) день"
+        case 2, 3, 4:
+            return "\(days) дня"
+        default:
+            return "\(days) дней"
+        }
+    }
+
+    func configure(with tracker: Tracker, isCompleted: Bool, completedDays: Int)
+    {
+        cardView.backgroundColor = tracker.color
+        emojiLabel.text = tracker.emoji
+        titleLabel.text = tracker.name
+        plusButton.backgroundColor = tracker.color
+        countLabel.text = formatDaysString(for: completedDays)
+
+        let config = UIImage.SymbolConfiguration(pointSize: 12, weight: .bold)
+        let imageName = isCompleted ? "checkmark" : "plus"
+
+        plusButton.setImage(
+            UIImage(systemName: imageName)?.withConfiguration(config),
+            for: .normal
+        )
+        plusButton.alpha = isCompleted ? 0.5 : 1.0
+
+    }
+
+}
+
+extension TrackersCollectionViewCell {
+    private func setupConstraints() {
         NSLayoutConstraint.activate([
             cardView.topAnchor.constraint(equalTo: contentView.topAnchor),
             cardView.leadingAnchor.constraint(
@@ -159,72 +210,40 @@ class TrackersCollectionViewCell: UICollectionViewCell {
                 equalTo: contentView.bottomAnchor,
                 constant: -16
             ),
-
         ])
-    }
-
-    func configure(with tracker: Tracker, isCompleted: Bool, completedDays: Int)
-    {
-        cardView.backgroundColor = tracker.color
-        emojiLabel.text = tracker.emoji
-        titleLabel.text = tracker.name
-        plusButton.backgroundColor = tracker.color
-        countLabel.text = formatDaysString(for: completedDays)
-
-        if isCompleted {
-            let image = UIImage(systemName: "checkmark")?.withConfiguration(
-                UIImage.SymbolConfiguration(pointSize: 12, weight: .bold)
-            )
-            plusButton.setImage(image, for: .normal)
-            plusButton.alpha = 0.5
-        } else {
-            let image = UIImage(systemName: "plus")?.withConfiguration(
-                UIImage.SymbolConfiguration(pointSize: 12, weight: .bold)
-            )
-        }
-    }
-
-    @objc private func completeButtonTapped() {
-        delegate?.didTapCompleteButton(of: self)
-    }
-
-    private func formatDaysString(for days: Int) -> String {
-        let remainder10 = days % 10
-        let remainder100 = days % 100
-
-        if remainder100 >= 11 && remainder100 <= 19 {
-            return "\(days) дней"
-        }
-
-        switch remainder10 {
-        case 1:
-            return "\(days) день"
-        case 2, 3, 4:
-            return "\(days) дня"
-        default:
-            return "\(days) дней"
-        }
     }
 }
 
-#Preview {
+// MARK: - Preview
 
-    GeometryReader { _ in
-        let width: CGFloat = 167
-        let height: CGFloat = 148
+#Preview("Trackers Cell States") {
+    Group {
 
-        let cell = TrackersCollectionViewCell(
-            frame: CGRect(x: 0, y: 0, width: width, height: height)
-        )
+        LazyVGrid(columns: [GridItem(.fixed(167))]) {
 
-        cell.configure(
-            with: MockTrackerData.tracker,
-            isCompleted: true,
-            completedDays: 4
-        )
+            ViewPreview {
+                let cell = TrackersCollectionViewCell()
+                cell.configure(
+                    with: MockTrackerData.tracker,
+                    isCompleted: false,
+                    completedDays: 0
+                )
+                return cell
+            }
+            .frame(width: 167, height: 148)
 
-        return ViewPreview { cell }
+            ViewPreview {
+                let cell = TrackersCollectionViewCell()
+                cell.configure(
+                    with: MockTrackerData.tracker,
+                    isCompleted: true,
+                    completedDays: 4
+                )
+                return cell
+            }
+            .frame(width: 167, height: 148)
+        }
     }
-    .frame(width: 167, height: 148)
     .padding()
+
 }

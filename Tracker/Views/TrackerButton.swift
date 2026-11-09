@@ -8,7 +8,7 @@
 import SwiftUI
 import UIKit
 
-class TrackerButton: UIButton {
+final class TrackerButton: UIButton {
 
     init(title: String) {
         super.init(frame: .zero)
@@ -48,6 +48,7 @@ class TrackerButton: UIButton {
 }
 
 // MARK: - Preview
+
 #Preview("Tracker Button States") {
     let containerStack = UIStackView()
     containerStack.axis = .vertical

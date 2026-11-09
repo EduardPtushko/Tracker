@@ -1,5 +1,5 @@
 //
-//  ChooseTrackerViewController.swift
+//  TrackerTypeSelectionViewController.swift
 //  Tracker
 //
 //  Created by Eduard Ptushko on 03.11.2026.
@@ -7,7 +7,9 @@
 
 import UIKit
 
-final class ChooseTrackerViewController: UIViewController {
+final class TrackerTypeSelectionViewController: UIViewController {
+
+    private weak var delegate: ConfigureTrackerViewControllerDelegate?
 
     // MARK: - UI Elements
 
@@ -25,6 +27,15 @@ final class ChooseTrackerViewController: UIViewController {
     private let irregularTrackerButton = TrackerButton(
         title: "Нерегулярное событие"
     )
+
+    init(delegate: ConfigureTrackerViewControllerDelegate? = nil) {
+        self.delegate = delegate
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 
     // MARK: - Lifecycle
 
@@ -73,23 +84,33 @@ final class ChooseTrackerViewController: UIViewController {
     // MARK: - Actions
 
     @objc private func didTapRegularTracker() {
-        let configureVC = ConfigureTrackerViewController(type: .habit)
+        let configureTrackerViewController = ConfigureTrackerViewController(
+            type: .habit
+        )
+        configureTrackerViewController.delegate = self.delegate
         let navigationController = UINavigationController(
-            rootViewController: configureVC
+            rootViewController: configureTrackerViewController
         )
         present(navigationController, animated: true)
     }
 
     @objc private func didTapIrregularTracker() {
-        let configureVC = ConfigureTrackerViewController(type: .irregular)
+        let configureTrackerViewController = ConfigureTrackerViewController(
+            type: .irregular
+        )
+        configureTrackerViewController.delegate = self.delegate
         let navigationController = UINavigationController(
-            rootViewController: configureVC
+            rootViewController: configureTrackerViewController
         )
         present(navigationController, animated: true)
     }
 
 }
 
+// MARK: - Preview
+
 #Preview {
-    UINavigationController(rootViewController: ChooseTrackerViewController())
+    UINavigationController(
+        rootViewController: TrackerTypeSelectionViewController()
+    )
 }

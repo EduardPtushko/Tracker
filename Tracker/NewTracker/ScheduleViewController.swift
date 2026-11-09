@@ -7,67 +7,75 @@
 
 import UIKit
 
-final class ScheduleViewController: UIViewController {
-    
-    private let daysOfWeek = [
-        "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота",
-        "Воскресенье",
-    ]
+protocol ScheduleViewControllerDelegate: AnyObject {
+    func didSelectSchedule(schedule: Set<WeekDay>)
+}
 
-    private lazy var contentStack: UIStackView = {
-        let stack = UIStackView()
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        stack.axis = .vertical
-        stack.spacing = 0
-        stack.alignment = .fill
-        stack.distribution = .fill
-        stack.layer.cornerRadius = 10
-        stack.layer.masksToBounds = true
-        return stack
+final class ScheduleViewController: UIViewController {
+
+    private let daysOfWeek: [WeekDay] = [
+        .monday, .tuesday, .wednesday, .thursday, .friday, .saturday, .sunday,
+    ]
+    var scheduledDays: Set<WeekDay> = []
+    weak var delegate: ScheduleViewControllerDelegate?
+
+    private lazy var tableView: UITableView = {
+        let tableView = UITableView()
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        tableView.backgroundColor = UIColor(resource: .trackerWhite)
+        tableView.separatorStyle = .none
+        tableView.isScrollEnabled = false
+        tableView.layer.cornerRadius = 16
+        tableView.clipsToBounds = true
+
+        return tableView
     }()
-    
+
     private let readyButton = TrackerButton(title: "Готово")
 
     override func viewDidLoad() {
         super.viewDidLoad()
         navigationItem.hidesBackButton = true
         setupView()
+        setupConstraints()
     }
+
+    // MARK: - Private Methods
 
     private func setupView() {
         view.backgroundColor = .systemBackground
         title = "Расписание"
-        view.addSubviews([contentStack, readyButton])
+        view.addSubviews([tableView, readyButton])
 
-        setupDays()
-        setupConstraints()
-    }
+        tableView.dataSource = self
+        tableView.register(
+            ScheduleTableViewCell.self,
+            forCellReuseIdentifier: ScheduleTableViewCell.reuseIdentifier
+        )
+        tableView.rowHeight = 75
 
-    private func setupDays() {
-        for (index, day) in daysOfWeek.enumerated() {
-            contentStack.addArrangedSubview(makeSwitchView(title: day))
-            
-            if index < daysOfWeek.count - 1 {
-                let separator = createSeparator()
-                contentStack.addArrangedSubview(separator)
-            }
-        }
+        readyButton.addTarget(
+            self,
+            action: #selector(didTapReadyButton),
+            for: .touchUpInside
+        )
     }
 
     private func setupConstraints() {
         NSLayoutConstraint.activate([
-            contentStack.topAnchor.constraint(
+            tableView.topAnchor.constraint(
                 equalTo: view.safeAreaLayoutGuide.topAnchor,
                 constant: 24
             ),
-            contentStack.leadingAnchor.constraint(
+            tableView.leadingAnchor.constraint(
                 equalTo: view.leadingAnchor,
                 constant: 16
             ),
-            contentStack.trailingAnchor.constraint(
+            tableView.trailingAnchor.constraint(
                 equalTo: view.trailingAnchor,
                 constant: -16
             ),
+            tableView.heightAnchor.constraint(equalToConstant: 525),
 
             readyButton.leadingAnchor.constraint(
                 equalTo: view.leadingAnchor,
@@ -84,59 +92,58 @@ final class ScheduleViewController: UIViewController {
         ])
     }
 
-    private func makeSwitchView(title: String) -> UIStackView {
-        let dayOfWeekLabel = UILabel()
-        dayOfWeekLabel.text = title
-        dayOfWeekLabel.font = UIFont.systemFont(ofSize: 17, weight: .regular)
-        dayOfWeekLabel.textColor = UIColor(resource: .trackerBlack)
-
-        let trackerSwitch = UISwitch()
-        trackerSwitch.isOn = false
-        trackerSwitch.onTintColor = .trackerBlue
-
-        var switchStack = UIStackView(arrangedSubviews: [
-            dayOfWeekLabel, trackerSwitch,
-        ])
-        switchStack.translatesAutoresizingMaskIntoConstraints = false
-        switchStack.axis = .horizontal
-        switchStack.alignment = .center
-        switchStack.distribution = .fill
-        switchStack.backgroundColor = .trackerBackgroundDay
-
-        switchStack.isLayoutMarginsRelativeArrangement = true
-        switchStack.layoutMargins = UIEdgeInsets(
-            top: 0,
-            left: 16,
-            bottom: 0,
-            right: 16
-        )
-        switchStack.heightAnchor.constraint(equalToConstant: 75).isActive = true
-
-        return switchStack
+    @objc private func didTapReadyButton() {
+        delegate?.didSelectSchedule(schedule: scheduledDays)
+        navigationController?.popViewController(animated: true)
     }
-    
-    private func createSeparator() -> UIView {
-        let container = UIView()
-        container.backgroundColor = .trackerBackgroundDay
-        container.translatesAutoresizingMaskIntoConstraints = false
-        container.heightAnchor.constraint(equalToConstant: 1).isActive = true
-        
-        let line = UIView()
-        line.backgroundColor = .trackerGray
-        line.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(line)
-        
-        NSLayoutConstraint.activate([
-            line.heightAnchor.constraint(equalToConstant: 0.5),
-            line.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
-            line.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
-            line.centerYAnchor.constraint(equalTo: container.centerYAnchor)
-        ])
-        
-        return container
+}
+
+// MARK: - UITableViewDataSource
+
+extension ScheduleViewController: UITableViewDataSource {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int)
+        -> Int
+    {
+        daysOfWeek.count
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath)
+        -> UITableViewCell
+    {
+        let cell = tableView.dequeueReusableCell(
+            withIdentifier: ScheduleTableViewCell.reuseIdentifier,
+            for: indexPath
+        )
+
+        guard let scheduleCell = cell as? ScheduleTableViewCell else {
+            return UITableViewCell()
+        }
+        scheduleCell.delegate = self
+
+        let day = daysOfWeek[indexPath.row]
+        scheduleCell.configure(with: day)
+
+        if indexPath.row == daysOfWeek.count - 1 {
+            scheduleCell.showSeparator(false)
+        }
+        return scheduleCell
+    }
+}
+
+// MARK: - ScheduleTableViewCellDelegate
+
+extension ScheduleViewController: ScheduleTableViewCellDelegate {
+    func didToggleSwitch(for day: WeekDay, isOn: Bool) {
+        if isOn {
+            scheduledDays.insert(day)
+        } else {
+            scheduledDays.remove(day)
+        }
     }
 
 }
+
+// MARK: - Preview
 
 #Preview {
     UINavigationController(rootViewController: ScheduleViewController())
