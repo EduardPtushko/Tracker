@@ -11,11 +11,6 @@ protocol ConfigureTrackerViewControllerDelegate: AnyObject {
     func didCreateTracker(_ tracker: Tracker, in categoryTitle: String)
 }
 
-enum TrackerType {
-    case habit
-    case irregular
-}
-
 final class ConfigureTrackerViewController: UIViewController {
 
     weak var delegate: ConfigureTrackerViewControllerDelegate?
@@ -24,9 +19,12 @@ final class ConfigureTrackerViewController: UIViewController {
     private var trackerName: String = ""
     private var schedule: Set<WeekDay> = []
     private var category: String?
+    private var selectedEmoji: String?
+    private var selectedColor: UIColor?
 
     // MARK: - UI Elements
 
+    private let trackersCollectionView = TrackerCustomizationCollectionView()
     private let nameInputView = TrackerNameInputView()
     private lazy var optionsCardView = TrackerOptionsCardView(type: type)
 
@@ -49,7 +47,7 @@ final class ConfigureTrackerViewController: UIViewController {
 
     private lazy var contentStack: UIStackView = {
         let stack = UIStackView(arrangedSubviews: [
-            nameInputView, optionsCardView,
+            nameInputView, optionsCardView, trackersCollectionView,
         ])
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
@@ -57,9 +55,9 @@ final class ConfigureTrackerViewController: UIViewController {
         stack.isLayoutMarginsRelativeArrangement = true
         stack.layoutMargins = UIEdgeInsets(
             top: 24,
-            left: 16,
+            left: 0,
             bottom: 24,
-            right: 16
+            right: 0
         )
         return stack
     }()
@@ -73,7 +71,7 @@ final class ConfigureTrackerViewController: UIViewController {
         return stack
     }()
 
-    // MARK: - Initialisers
+    // MARK: - Init
 
     init(type: TrackerType) {
         self.type = type
@@ -108,6 +106,7 @@ final class ConfigureTrackerViewController: UIViewController {
         let defaultCategoryName = MockTrackerData.defaultCategory
         self.category = defaultCategoryName
         optionsCardView.setCategorySubtitle(defaultCategoryName)
+        trackersCollectionView.trackerDelegate = self
     }
 
     private func setupConstraints() {
@@ -199,12 +198,14 @@ final class ConfigureTrackerViewController: UIViewController {
         let trimmedName = trackerName.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
-        guard let category, !trimmedName.isEmpty else { return }
+        guard let category, let selectedColor, let selectedEmoji,
+            !trimmedName.isEmpty
+        else { return }
         let tracker = Tracker(
             id: UUID(),
             name: trimmedName,
-            color: UIColor.red,
-            emoji: "😀",
+            color: selectedColor,
+            emoji: selectedEmoji,
             schedule: type == .habit ? schedule : nil
         )
 
@@ -224,13 +225,17 @@ final class ConfigureTrackerViewController: UIViewController {
             in: .whitespacesAndNewlines
         ).isEmpty
         let isCategoryValid = category != nil
+        let isSelectedEmojiValid = selectedEmoji != nil
+        let isSelectedColorValid = selectedColor != nil
         let isScheduleValid = type == .habit ? !schedule.isEmpty : true
 
         createButton.isEnabled =
             isNameValid && isCategoryValid && isScheduleValid
-
+            && isSelectedColorValid
+            && isScheduleValid
     }
 }
+// MARK: - ScheduleViewControllerDelegate
 
 extension ConfigureTrackerViewController: ScheduleViewControllerDelegate {
     func didSelectSchedule(schedule: Set<WeekDay>) {
@@ -254,6 +259,27 @@ extension ConfigureTrackerViewController: ScheduleViewControllerDelegate {
             optionsCardView.setScheduleSubtitle(nil)
         }
     }
+}
+
+extension ConfigureTrackerViewController:
+    TrackerCustomizationCollectionViewDelegate
+{
+    func selectView(
+        _ view: TrackerCustomizationCollectionView,
+        didSelectEmoji emoji: String
+    ) {
+        selectedEmoji = emoji
+        updateCreateButtonState()
+    }
+
+    func selectView(
+        _ view: TrackerCustomizationCollectionView,
+        didSelectColor color: UIColor
+    ) {
+        selectedColor = color
+        updateCreateButtonState()
+    }
+
 }
 
 // MARK: - Preview

@@ -82,8 +82,14 @@ final class TrackerOptionsCardView: UIView {
     private func setupConstraints() {
         var constraints = [
             optionsStack.topAnchor.constraint(equalTo: topAnchor),
-            optionsStack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            optionsStack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            optionsStack.leadingAnchor.constraint(
+                equalTo: leadingAnchor,
+                constant: 16
+            ),
+            optionsStack.trailingAnchor.constraint(
+                equalTo: trailingAnchor,
+                constant: 16
+            ),
             optionsStack.bottomAnchor.constraint(equalTo: bottomAnchor),
         ]
 

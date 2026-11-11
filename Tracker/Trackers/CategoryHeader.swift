@@ -5,17 +5,17 @@
 //  Created by Eduard Ptushko on 02.11.2026.
 //
 
-import UIKit
 import SwiftUI
+import UIKit
 
 final class CategoryHeader: UICollectionReusableView {
 
     static let reuseIdentifier = "CategoryHeader"
 
-    let titleLabel: UILabel = {
+    private let titleLabel: UILabel = {
         let label = UILabel()
         label.font = .systemFont(ofSize: 19, weight: .bold)
-        label.textColor = .black
+        label.textColor = .trackerBlack
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -45,16 +45,26 @@ final class CategoryHeader: UICollectionReusableView {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        titleLabel.text = nil
+    }
+
+    func configure(with title: String) {
+        titleLabel.text = title
+    }
 }
+
+// MARK: - Preview
 
 #Preview("Category Header") {
     ViewPreview {
         let header = CategoryHeader()
-        header.titleLabel.text = "Категории"
+        header.configure(with: "Категории")
         header.backgroundColor = .systemGray6
         return header
     }
     .frame(height: 60)
     .frame(maxWidth: .infinity)
 }
-

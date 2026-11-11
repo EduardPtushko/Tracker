@@ -63,7 +63,7 @@ final class TrackerNameInputView: UIView {
         return stack
     }()
 
-    // MARK: - Initialisers
+    // MARK: - Init
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -92,8 +92,14 @@ final class TrackerNameInputView: UIView {
 
         NSLayoutConstraint.activate([
             containerStack.topAnchor.constraint(equalTo: topAnchor),
-            containerStack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            containerStack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            containerStack.leadingAnchor.constraint(
+                equalTo: leadingAnchor,
+                constant: 16
+            ),
+            containerStack.trailingAnchor.constraint(
+                equalTo: trailingAnchor,
+                constant: 16
+            ),
             containerStack.bottomAnchor.constraint(equalTo: bottomAnchor),
 
             textFieldContainer.heightAnchor.constraint(equalToConstant: 75),
@@ -128,6 +134,8 @@ final class TrackerNameInputView: UIView {
         }
     }
 }
+
+// MARK: - UITextFieldDelegate
 
 extension TrackerNameInputView: UITextFieldDelegate {
     func textField(

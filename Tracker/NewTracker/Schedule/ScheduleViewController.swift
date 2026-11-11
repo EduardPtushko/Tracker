@@ -13,6 +13,8 @@ protocol ScheduleViewControllerDelegate: AnyObject {
 
 final class ScheduleViewController: UIViewController {
 
+    // MARK: - Properties
+
     private let daysOfWeek: [WeekDay] = [
         .monday, .tuesday, .wednesday, .thursday, .friday, .saturday, .sunday,
     ]
@@ -32,6 +34,8 @@ final class ScheduleViewController: UIViewController {
     }()
 
     private let readyButton = TrackerButton(title: "Готово")
+
+    // MARK: - Lifecycle
 
     override func viewDidLoad() {
         super.viewDidLoad()

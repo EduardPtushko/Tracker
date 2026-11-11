@@ -322,7 +322,7 @@ extension TrackersViewController: UICollectionViewDataSource {
 
             let categoryTitle = visibleCategories[indexPath.section]
                 .title
-            header.titleLabel.text = categoryTitle
+            header.configure(with: categoryTitle)
 
             return header
         }
@@ -433,7 +433,6 @@ extension TrackersViewController: ConfigureTrackerViewControllerDelegate {
             )
             categories.append(newCategory)
         }
-
     }
 
 }
