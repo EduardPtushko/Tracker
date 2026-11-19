@@ -7,20 +7,59 @@
 
 import UIKit
 
-protocol ConfigureTrackerViewControllerDelegate: AnyObject {
-    func didCreateTracker(_ tracker: Tracker, in categoryTitle: String)
-}
-
 final class ConfigureTrackerViewController: UIViewController {
 
-    weak var delegate: ConfigureTrackerViewControllerDelegate?
+    private struct FormState {
+        var name: String = ""
+        var schedule: Set<WeekDay> = []
+        var category: String?
+        var emoji: String?
+        var color: UIColor?
 
+        var trimmedName: String {
+            name.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        func isValid(for type: TrackerType) -> Bool {
+            let hasName = !trimmedName.isEmpty
+            let hasBasics = category != nil && emoji != nil && color != nil
+            let hasValidSchedule = type == .irregular || !schedule.isEmpty
+            return hasName && hasBasics && hasValidSchedule
+        }
+
+        func makeTracker(for type: TrackerType) -> Tracker? {
+            guard isValid(for: type), let color, let emoji else { return nil }
+
+            return Tracker(
+                id: UUID(),
+                name: trimmedName,
+                color: color,
+                emoji: emoji,
+                schedule: type == .habit ? schedule : nil
+            )
+        }
+    }
+
+    private enum Layout {
+        static let contentSpacing: CGFloat = 24
+        static let contentVerticalInset: CGFloat = 24
+        static let buttonsSpacing: CGFloat = 8
+        static let buttonsHeight: CGFloat = 60
+        static let buttonsHorizontalInset: CGFloat = 20
+        static let bottomPadding: CGFloat = 16
+        static let scrollBottomSpacing: CGFloat = 16
+    }
+
+    // MARK: - Private Properties
+
+    private let dataStore: any TrackerDataStoreProtocol
     private let type: TrackerType
-    private var trackerName: String = ""
-    private var schedule: Set<WeekDay> = []
-    private var category: String?
-    private var selectedEmoji: String?
-    private var selectedColor: UIColor?
+
+    private var formState = FormState() {
+        didSet {
+            createButton.isEnabled = formState.isValid(for: type)
+        }
+    }
 
     // MARK: - UI Elements
 
@@ -51,12 +90,12 @@ final class ConfigureTrackerViewController: UIViewController {
         ])
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
-        stack.spacing = 24
+        stack.spacing = Layout.contentSpacing
         stack.isLayoutMarginsRelativeArrangement = true
         stack.layoutMargins = UIEdgeInsets(
-            top: 24,
+            top: Layout.contentVerticalInset,
             left: 0,
-            bottom: 24,
+            bottom: Layout.contentVerticalInset,
             right: 0
         )
         return stack
@@ -66,14 +105,15 @@ final class ConfigureTrackerViewController: UIViewController {
         let stack = UIStackView(arrangedSubviews: [cancelButton, createButton])
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .horizontal
-        stack.spacing = 8
+        stack.spacing = Layout.buttonsSpacing
         stack.distribution = .fillEqually
         return stack
     }()
 
     // MARK: - Init
 
-    init(type: TrackerType) {
+    init(dataStore: any TrackerDataStoreProtocol, type: TrackerType) {
+        self.dataStore = dataStore
         self.type = type
         super.init(nibName: nil, bundle: nil)
     }
@@ -104,7 +144,7 @@ final class ConfigureTrackerViewController: UIViewController {
         scrollView.addSubview(contentStack)
 
         let defaultCategoryName = MockTrackerData.defaultCategory
-        self.category = defaultCategoryName
+        formState.category = defaultCategoryName
         optionsCardView.setCategorySubtitle(defaultCategoryName)
         trackersCollectionView.trackerDelegate = self
     }
@@ -113,17 +153,19 @@ final class ConfigureTrackerViewController: UIViewController {
         NSLayoutConstraint.activate([
             buttonsStack.bottomAnchor.constraint(
                 equalTo: view.safeAreaLayoutGuide.bottomAnchor,
-                constant: -16
+                constant: -Layout.bottomPadding
             ),
             buttonsStack.leadingAnchor.constraint(
                 equalTo: view.leadingAnchor,
-                constant: 20
+                constant: Layout.buttonsHorizontalInset
             ),
             buttonsStack.trailingAnchor.constraint(
                 equalTo: view.trailingAnchor,
-                constant: -20
+                constant: -Layout.buttonsHorizontalInset
             ),
-            buttonsStack.heightAnchor.constraint(equalToConstant: 60),
+            buttonsStack.heightAnchor.constraint(
+                equalToConstant: Layout.buttonsHeight
+            ),
 
             scrollView.topAnchor.constraint(
                 equalTo: view.safeAreaLayoutGuide.topAnchor
@@ -132,7 +174,7 @@ final class ConfigureTrackerViewController: UIViewController {
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(
                 equalTo: buttonsStack.topAnchor,
-                constant: -16
+                constant: -Layout.scrollBottomSpacing
             ),
 
             contentStack.topAnchor.constraint(
@@ -155,8 +197,7 @@ final class ConfigureTrackerViewController: UIViewController {
 
     private func setupBindings() {
         nameInputView.onTextChanged = { [weak self] text in
-            self?.trackerName = text
-            self?.updateCreateButtonState()
+            self?.formState.name = text
         }
 
         optionsCardView.onCategoryTap = { [weak self] in
@@ -167,16 +208,37 @@ final class ConfigureTrackerViewController: UIViewController {
             self?.didTapSchedule()
         }
 
-        createButton.addTarget(
-            self,
-            action: #selector(didTapCreateButton),
+        createButton.addAction(
+            UIAction { [weak self] _ in
+                self?.didTapCreateButton()
+            },
             for: .touchUpInside
         )
-        cancelButton.addTarget(
-            self,
-            action: #selector(didTapCancelButton),
+
+        cancelButton.addAction(
+            UIAction { [weak self] _ in
+                self?.didTapCancelButton()
+            },
             for: .touchUpInside
         )
+    }
+
+    private func updateScheduleRowSubtitle() {
+        guard type == .habit else { return }
+
+        if formState.schedule.count == WeekDay.allCases.count {
+            optionsCardView.setScheduleSubtitle("Каждый день")
+        } else if !formState.schedule.isEmpty {
+            let sortedDays = formState.schedule.sorted {
+                $0.rawValue < $1.rawValue
+            }
+            let daysText = sortedDays.map { $0.shortName }.joined(
+                separator: ", "
+            )
+            optionsCardView.setScheduleSubtitle(daysText)
+        } else {
+            optionsCardView.setScheduleSubtitle(nil)
+        }
     }
 
     // MARK: - Actions
@@ -194,72 +256,35 @@ final class ConfigureTrackerViewController: UIViewController {
         //TODO: Push CategoryViewController
     }
 
-    @objc private func didTapCreateButton() {
-        let trimmedName = trackerName.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
-        guard let category, let selectedColor, let selectedEmoji,
-            !trimmedName.isEmpty
+    private func didTapCreateButton() {
+        guard let category = formState.category,
+            let tracker = formState.makeTracker(for: type)
         else { return }
-        let tracker = Tracker(
-            id: UUID(),
-            name: trimmedName,
-            color: selectedColor,
-            emoji: selectedEmoji,
-            schedule: type == .habit ? schedule : nil
-        )
 
-        delegate?.didCreateTracker(tracker, in: category)
-        view.window?.rootViewController?.dismiss(
-            animated: true,
-            completion: nil
-        )
+        do {
+            try dataStore.addTracker(tracker, toCategoryWithTitle: category)
+            view.window?.rootViewController?.dismiss(
+                animated: true
+            )
+        } catch {
+            assertionFailure("Failed to save tracker: \(error)")
+        }
     }
 
-    @objc private func didTapCancelButton() {
-        dismiss(animated: true, completion: nil)
-    }
-
-    private func updateCreateButtonState() {
-        let isNameValid = !trackerName.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        ).isEmpty
-        let isCategoryValid = category != nil
-        let isSelectedEmojiValid = selectedEmoji != nil
-        let isSelectedColorValid = selectedColor != nil
-        let isScheduleValid = type == .habit ? !schedule.isEmpty : true
-
-        createButton.isEnabled =
-            isNameValid && isCategoryValid && isScheduleValid
-            && isSelectedColorValid
-            && isScheduleValid
+    private func didTapCancelButton() {
+        dismiss(animated: true)
     }
 }
 // MARK: - ScheduleViewControllerDelegate
 
 extension ConfigureTrackerViewController: ScheduleViewControllerDelegate {
     func didSelectSchedule(schedule: Set<WeekDay>) {
-        self.schedule = schedule
+        formState.schedule = schedule
         updateScheduleRowSubtitle()
-        updateCreateButtonState()
-    }
-
-    private func updateScheduleRowSubtitle() {
-        guard type == .habit else { return }
-
-        if schedule.count == 7 {
-            optionsCardView.setScheduleSubtitle("Каждый день")
-        } else if !schedule.isEmpty {
-            let sortedDays = schedule.sorted { $0.rawValue < $1.rawValue }
-            let daysText = sortedDays.map { $0.shortName }.joined(
-                separator: ", "
-            )
-            optionsCardView.setScheduleSubtitle(daysText)
-        } else {
-            optionsCardView.setScheduleSubtitle(nil)
-        }
     }
 }
+
+// MARK: - TrackerCustomizationCollectionViewDelegate
 
 extension ConfigureTrackerViewController:
     TrackerCustomizationCollectionViewDelegate
@@ -268,32 +293,31 @@ extension ConfigureTrackerViewController:
         _ view: TrackerCustomizationCollectionView,
         didSelectEmoji emoji: String
     ) {
-        selectedEmoji = emoji
-        updateCreateButtonState()
+        formState.emoji = emoji
     }
 
     func selectView(
         _ view: TrackerCustomizationCollectionView,
         didSelectColor color: UIColor
     ) {
-        selectedColor = color
-        updateCreateButtonState()
+        formState.color = color
     }
-
 }
 
 // MARK: - Preview
 
 #Preview("Habit") {
-    UINavigationController(
+    let store = TrackerDataStore(context: CoreDataStack.preview.viewContext)
+    return UINavigationController(
         rootViewController:
-            ConfigureTrackerViewController(type: .habit)
+            ConfigureTrackerViewController(dataStore: store, type: .habit)
     )
 }
 
 #Preview("Irregular") {
-    UINavigationController(
+    let store = TrackerDataStore(context: CoreDataStack.preview.viewContext)
+    return UINavigationController(
         rootViewController:
-            ConfigureTrackerViewController(type: .irregular)
+            ConfigureTrackerViewController(dataStore: store, type: .irregular)
     )
 }

@@ -10,11 +10,18 @@ import UIKit
 
 final class CategoryHeader: UICollectionReusableView {
 
-    static let reuseIdentifier = "CategoryHeader"
+    static let reuseIdentifier = String(describing: CategoryHeader.self)
+    
+    private enum Layout {
+           static let fontSize: CGFloat = 19
+           static let defaultHorizontalInset: CGFloat = 28
+           static let topInset: CGFloat = 16
+           static let bottomInset: CGFloat = 12
+       }
 
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 19, weight: .bold)
+        label.font = .systemFont(ofSize: Layout.fontSize, weight: .bold)
         label.textColor = .trackerBlack
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -28,16 +35,16 @@ final class CategoryHeader: UICollectionReusableView {
         NSLayoutConstraint.activate([
             titleLabel.leadingAnchor.constraint(
                 equalTo: leadingAnchor,
-                constant: 28
+                constant: Layout.defaultHorizontalInset
             ),
-            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 16),
+            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: Layout.topInset),
             titleLabel.bottomAnchor.constraint(
                 equalTo: bottomAnchor,
-                constant: -12
+                constant: -Layout.bottomInset
             ),
             titleLabel.trailingAnchor.constraint(
                 equalTo: trailingAnchor,
-                constant: -28
+                constant: -Layout.defaultHorizontalInset
             ),
         ])
     }

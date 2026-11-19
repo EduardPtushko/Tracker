@@ -9,11 +9,19 @@ import UIKit
 
 final class TrackerNameInputView: UIView {
 
+    private enum Constants {
+        static let characterLimit = 38
+        static let horizontalInset: CGFloat = 16
+        static let fieldHeight: CGFloat = 75
+        static let cornerRadius: CGFloat = 16
+        static let stackSpacing: CGFloat = 8
+        static let errorFontSize: CGFloat = 17
+        static let animationDuration: TimeInterval = 0.2
+    }
+
     // MARK: - Callbacks
 
     var onTextChanged: ((String) -> Void)?
-
-    private let characterLimit = 38
 
     // MARK: - UI Elements
 
@@ -21,7 +29,7 @@ final class TrackerNameInputView: UIView {
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
         container.backgroundColor = .trackerBackgroundDay
-        container.layer.cornerRadius = 16
+        container.layer.cornerRadius = Constants.cornerRadius
         container.layer.masksToBounds = true
         return container
     }()
@@ -33,21 +41,20 @@ final class TrackerNameInputView: UIView {
         textField.backgroundColor = .clear
         textField.clearButtonMode = .whileEditing
         textField.returnKeyType = .done
-        textField.addTarget(
-            self,
-            action: #selector(textFieldDidChange),
-            for: .editingChanged
-        )
         textField.delegate = self
+        textField.addAction(UIAction { [weak self] _ in
+            self?.onTextChanged?(self?.textField.text ?? "")
+            
+        }, for: .editingChanged)
         return textField
     }()
 
     private lazy var errorLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Ограничение \(characterLimit) символов"
+        label.text = "Ограничение \(Constants.characterLimit) символов"
         label.textColor = .trackerRed
-        label.font = .systemFont(ofSize: 17, weight: .regular)
+        label.font = .systemFont(ofSize: Constants.errorFontSize, weight: .regular)
         label.textAlignment = .center
         label.isHidden = true
         return label
@@ -59,7 +66,7 @@ final class TrackerNameInputView: UIView {
         ])
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
-        stack.spacing = 8
+        stack.spacing = Constants.stackSpacing
         return stack
     }()
 
@@ -94,26 +101,26 @@ final class TrackerNameInputView: UIView {
             containerStack.topAnchor.constraint(equalTo: topAnchor),
             containerStack.leadingAnchor.constraint(
                 equalTo: leadingAnchor,
-                constant: 16
+                constant: Constants.horizontalInset
             ),
             containerStack.trailingAnchor.constraint(
                 equalTo: trailingAnchor,
-                constant: 16
+                constant: -Constants.horizontalInset
             ),
             containerStack.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            textFieldContainer.heightAnchor.constraint(equalToConstant: 75),
+            textFieldContainer.heightAnchor.constraint(equalToConstant: Constants.fieldHeight),
 
             textField.topAnchor.constraint(
                 equalTo: textFieldContainer.topAnchor
             ),
             textField.leadingAnchor.constraint(
                 equalTo: textFieldContainer.leadingAnchor,
-                constant: 16
+                constant: Constants.horizontalInset
             ),
             textField.trailingAnchor.constraint(
                 equalTo: textFieldContainer.trailingAnchor,
-                constant: -16
+                constant: -Constants.horizontalInset
             ),
             textField.bottomAnchor.constraint(
                 equalTo: textFieldContainer.bottomAnchor
@@ -121,14 +128,11 @@ final class TrackerNameInputView: UIView {
         ])
     }
 
-    @objc private func textFieldDidChange(_ textField: UITextField) {
-        onTextChanged?(textField.text ?? "")
-    }
 
     private func setErrorVisible(_ isVisible: Bool) {
         guard errorLabel.isHidden == isVisible else { return }
 
-        UIView.animate(withDuration: 0.2) {
+        UIView.animate(withDuration: Constants.animationDuration) {
             self.errorLabel.isHidden = !isVisible
             self.superview?.layoutIfNeeded()
         }
@@ -151,7 +155,7 @@ extension TrackerNameInputView: UITextFieldDelegate {
             in: stringRange,
             with: string
         )
-        if updatedText.count > characterLimit {
+        if updatedText.count > Constants.characterLimit {
             setErrorVisible(true)
             return false
         } else {

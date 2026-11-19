@@ -15,14 +15,25 @@ enum ConfigureTrackerCellItem {
 
 class TrackerCustomizationCollectionViewCell: UICollectionViewCell {
 
-    static let identifier = "ConfigureTrackerCollectionViewCell"
+    static let identifier = String(
+        describing: TrackerCustomizationCollectionViewCell.self
+    )
+
+    private enum Layout {
+        static let emojiFontSize: CGFloat = 32
+        static let emojiCornerRadius: CGFloat = 16
+        static let colorCornerRadius: CGFloat = 8
+        static let colorInset: CGFloat = 6
+        static let selectionBorderWidth: CGFloat = 3
+        static let selectionBorderAlpha: CGFloat = 0.3
+    }
 
     // MARK: - UI Elements
 
     private lazy var emojiLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = .systemFont(ofSize: 32, weight: .bold)
+        label.font = .systemFont(ofSize: Layout.emojiFontSize, weight: .bold)
         label.textAlignment = .center
         return label
     }()
@@ -30,7 +41,7 @@ class TrackerCustomizationCollectionViewCell: UICollectionViewCell {
     private lazy var colorView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.layer.cornerRadius = 8
+        view.layer.cornerRadius = Layout.colorCornerRadius
         return view
     }()
 
@@ -58,6 +69,33 @@ class TrackerCustomizationCollectionViewCell: UICollectionViewCell {
         contentView.layer.borderColor = nil
     }
 
+    // MARK: - Public Methods
+
+    func configure(with item: ConfigureTrackerCellItem, isSelected: Bool) {
+        switch item {
+        case .emoji(let emoji):
+            emojiLabel.isHidden = false
+            colorView.isHidden = true
+            emojiLabel.text = emoji
+            contentView.layer.cornerRadius = Layout.emojiCornerRadius
+            contentView.backgroundColor =
+                isSelected ? .trackerLightGray : .clear
+        case .color(let color):
+            emojiLabel.isHidden = true
+            colorView.isHidden = false
+            colorView.backgroundColor = color
+            contentView.layer.cornerRadius = Layout.colorCornerRadius
+            contentView.layer.borderWidth =
+                isSelected ? Layout.selectionBorderWidth : 0
+            contentView.layer.borderColor =
+                isSelected
+                ? color.withAlphaComponent(Layout.selectionBorderAlpha).cgColor
+                : nil
+        }
+    }
+
+    // MARK: - Private Methos
+
     private func setupView() {
         contentView.addSubviews([emojiLabel, colorView])
 
@@ -71,41 +109,21 @@ class TrackerCustomizationCollectionViewCell: UICollectionViewCell {
 
             colorView.topAnchor.constraint(
                 equalTo: contentView.topAnchor,
-                constant: 6
+                constant: Layout.colorInset
             ),
             colorView.bottomAnchor.constraint(
                 equalTo: contentView.bottomAnchor,
-                constant: -6
+                constant: -Layout.colorInset
             ),
             colorView.leadingAnchor.constraint(
                 equalTo: contentView.leadingAnchor,
-                constant: 6
+                constant: Layout.colorInset
             ),
             colorView.trailingAnchor.constraint(
                 equalTo: contentView.trailingAnchor,
-                constant: -6
+                constant: -Layout.colorInset
             ),
         ])
-    }
-
-    func configure(with item: ConfigureTrackerCellItem, isSelected: Bool) {
-        switch item {
-        case .emoji(let emoji):
-            emojiLabel.isHidden = false
-            colorView.isHidden = true
-            emojiLabel.text = emoji
-            contentView.layer.cornerRadius = 16
-            contentView.backgroundColor =
-                isSelected ? .trackerLightGray : .clear
-        case .color(let color):
-            emojiLabel.isHidden = true
-            colorView.isHidden = false
-            colorView.backgroundColor = color
-            contentView.layer.cornerRadius = 8
-            contentView.layer.borderWidth = isSelected ? 3 : 0
-            contentView.layer.borderColor =
-                isSelected ? color.withAlphaComponent(0.3).cgColor : nil
-        }
     }
 }
 

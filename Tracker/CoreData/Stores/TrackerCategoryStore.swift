@@ -67,18 +67,22 @@ final class TrackerCategoryStore: NSObject {
 
     func addCategory(title: String) throws {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        
         guard !trimmedTitle.isEmpty else {
             throw StoreError.invalidData
         }
+        
         let request = TrackerCategoryEntity.fetchRequest()
         request.predicate = NSPredicate(
-            format: "$K == [c] %@",
+            format: "%K == [c] %@",
             #keyPath(TrackerCategoryEntity.title),
             trimmedTitle
         )
+        
         if try context.count(for: request) > 0 {
             throw StoreError.duplicateRecord
         }
+        
         let entityCategory = TrackerCategoryEntity(context: context)
         entityCategory.title = trimmedTitle
     }

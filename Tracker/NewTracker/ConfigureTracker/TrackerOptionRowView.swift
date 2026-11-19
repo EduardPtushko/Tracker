@@ -9,26 +9,41 @@ import UIKit
 
 final class TrackerOptionRowView: UIControl {
 
+    private enum Layout {
+        static let minHeight: CGFloat = 75
+        static let horizontalInset: CGFloat = 16
+        static let verticalInset: CGFloat = 12
+        static let stackSpacing: CGFloat = 2
+        static let fontSize: CGFloat = 17
+        static let chevronPointSize: CGFloat = 14
+    }
+
+    private enum Constants {
+        static let highlightDuration: TimeInterval = 0.15
+        static let highlightedAlpha: CGFloat = 0.6
+    }
+
     // MARK: - UI Elements
 
     private let titleLabel: UILabel = {
         let label = UILabel()
         label.textColor = .label
-        label.font = .systemFont(ofSize: 17, weight: .regular)
+        label.font = .systemFont(ofSize: Layout.fontSize, weight: .regular)
         return label
     }()
 
     private let subtitleLabel: UILabel = {
         let label = UILabel()
         label.textColor = .secondaryLabel
-        label.font = .systemFont(ofSize: 17, weight: .regular)
+        label.font = .systemFont(ofSize: Layout.fontSize, weight: .regular)
+        label.numberOfLines = 0
         label.isHidden = true
         return label
     }()
 
     private let chevronImageView: UIImageView = {
         let config = UIImage.SymbolConfiguration(
-            pointSize: 14,
+            pointSize: Layout.chevronPointSize,
             weight: .semibold
         )
         let image = UIImage(
@@ -39,6 +54,7 @@ final class TrackerOptionRowView: UIControl {
         imageView.tintColor = .systemGray3
         imageView.contentMode = .scaleAspectFit
         imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.isUserInteractionEnabled = false
         return imageView
     }()
 
@@ -47,7 +63,7 @@ final class TrackerOptionRowView: UIControl {
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
         stack.alignment = .leading
-        stack.spacing = 2
+        stack.spacing = Layout.stackSpacing
         stack.isUserInteractionEnabled = false
         return stack
     }()
@@ -56,8 +72,9 @@ final class TrackerOptionRowView: UIControl {
 
     override var isHighlighted: Bool {
         didSet {
-            UIView.animate(withDuration: 0.15) {
-                self.alpha = self.isHighlighted ? 0.6 : 1.0
+            UIView.animate(withDuration: Constants.highlightDuration) {
+                self.alpha =
+                    self.isHighlighted ? Constants.highlightedAlpha : 1.0
             }
         }
     }
@@ -77,8 +94,11 @@ final class TrackerOptionRowView: UIControl {
     // MARK: - Public Methods
 
     func setSubtitle(_ text: String?) {
-        subtitleLabel.text = text
-        subtitleLabel.isHidden = (text?.isEmpty ?? true)
+        let isEmpty =
+            text?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ?? true
+        subtitleLabel.text = isEmpty ? nil : text
+        subtitleLabel.isHidden = isEmpty
     }
 
     // MARK: - Private Methods
@@ -95,29 +115,31 @@ final class TrackerOptionRowView: UIControl {
         )
 
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(greaterThanOrEqualToConstant: 75),
+            heightAnchor.constraint(
+                greaterThanOrEqualToConstant: Layout.minHeight
+            ),
 
             labelStack.leadingAnchor.constraint(
                 equalTo: leadingAnchor,
-                constant: 16
+                constant: Layout.horizontalInset
             ),
             labelStack.trailingAnchor.constraint(
                 equalTo: chevronImageView.leadingAnchor,
-                constant: -16
+                constant: -Layout.horizontalInset
             ),
             labelStack.centerYAnchor.constraint(equalTo: centerYAnchor),
             labelStack.topAnchor.constraint(
                 greaterThanOrEqualTo: topAnchor,
-                constant: 12
+                constant: Layout.verticalInset
             ),
             labelStack.bottomAnchor.constraint(
                 lessThanOrEqualTo: bottomAnchor,
-                constant: -12
+                constant: -Layout.verticalInset
             ),
 
             chevronImageView.trailingAnchor.constraint(
                 equalTo: trailingAnchor,
-                constant: -16
+                constant: -Layout.horizontalInset
             ),
             chevronImageView.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])

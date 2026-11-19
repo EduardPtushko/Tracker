@@ -9,6 +9,13 @@ import UIKit
 
 final class TrackerOptionsCardView: UIView {
 
+    private enum Layout {
+        static let cornerRadius: CGFloat = 16
+        static let stackInset: CGFloat = 16
+        static let separatorHorizontalInset: CGFloat = 16
+        static let separatorHeight: CGFloat = 0.5
+    }
+
     // MARK: - Callbacks
 
     var onCategoryTap: (() -> Void)?
@@ -27,7 +34,7 @@ final class TrackerOptionsCardView: UIView {
         let stack = UIStackView()
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
-        stack.distribution = .fillEqually
+        stack.distribution = .fill
         return stack
     }()
 
@@ -67,7 +74,7 @@ final class TrackerOptionsCardView: UIView {
     private func setupView() {
         translatesAutoresizingMaskIntoConstraints = false
         backgroundColor = .trackerBackgroundDay
-        layer.cornerRadius = 16
+        layer.cornerRadius = Layout.cornerRadius
         layer.masksToBounds = true
 
         addSubview(optionsStack)
@@ -84,11 +91,11 @@ final class TrackerOptionsCardView: UIView {
             optionsStack.topAnchor.constraint(equalTo: topAnchor),
             optionsStack.leadingAnchor.constraint(
                 equalTo: leadingAnchor,
-                constant: 16
+                constant: Layout.stackInset
             ),
             optionsStack.trailingAnchor.constraint(
                 equalTo: trailingAnchor,
-                constant: 16
+                constant: -Layout.stackInset
             ),
             optionsStack.bottomAnchor.constraint(equalTo: bottomAnchor),
         ]
@@ -97,14 +104,16 @@ final class TrackerOptionsCardView: UIView {
             constraints.append(contentsOf: [
                 separator.leadingAnchor.constraint(
                     equalTo: leadingAnchor,
-                    constant: 16
+                    constant: Layout.separatorHorizontalInset
                 ),
                 separator.trailingAnchor.constraint(
                     equalTo: trailingAnchor,
-                    constant: -16
+                    constant: -Layout.separatorHorizontalInset
                 ),
                 separator.centerYAnchor.constraint(equalTo: centerYAnchor),
-                separator.heightAnchor.constraint(equalToConstant: 0.5),
+                separator.heightAnchor.constraint(
+                    equalToConstant: Layout.separatorHeight
+                ),
             ])
         }
 
@@ -133,56 +142,56 @@ final class TrackerOptionsCardView: UIView {
 // MARK: - Previews
 
 #Preview("Habit Card (2 Rows)") {
-    let vc = UIViewController()
-    vc.view.backgroundColor = .systemBackground
+    let controller = UIViewController()
+    controller.view.backgroundColor = .systemBackground
 
     let cardView = TrackerOptionsCardView(type: .habit)
     cardView.setCategorySubtitle("Важное")
     cardView.setScheduleSubtitle("Пн, Ср, Пт")
 
-    vc.view.addSubview(cardView)
+    controller.view.addSubview(cardView)
 
     NSLayoutConstraint.activate([
         cardView.topAnchor.constraint(
-            equalTo: vc.view.safeAreaLayoutGuide.topAnchor,
+            equalTo: controller.view.safeAreaLayoutGuide.topAnchor,
             constant: 24
         ),
         cardView.leadingAnchor.constraint(
-            equalTo: vc.view.leadingAnchor,
+            equalTo: controller.view.leadingAnchor,
             constant: 16
         ),
         cardView.trailingAnchor.constraint(
-            equalTo: vc.view.trailingAnchor,
+            equalTo: controller.view.trailingAnchor,
             constant: -16
         ),
     ])
 
-    return vc
+    return controller
 }
 
 #Preview("Irregular Card (1 Row)") {
-    let vc = UIViewController()
-    vc.view.backgroundColor = .systemBackground
+    let controller = UIViewController()
+    controller.view.backgroundColor = .systemBackground
 
     let cardView = TrackerOptionsCardView(type: .irregular)
     cardView.setCategorySubtitle("Радостные мелочи")
 
-    vc.view.addSubview(cardView)
+    controller.view.addSubview(cardView)
 
     NSLayoutConstraint.activate([
         cardView.topAnchor.constraint(
-            equalTo: vc.view.safeAreaLayoutGuide.topAnchor,
+            equalTo: controller.view.safeAreaLayoutGuide.topAnchor,
             constant: 24
         ),
         cardView.leadingAnchor.constraint(
-            equalTo: vc.view.leadingAnchor,
+            equalTo: controller.view.leadingAnchor,
             constant: 16
         ),
         cardView.trailingAnchor.constraint(
-            equalTo: vc.view.trailingAnchor,
+            equalTo: controller.view.trailingAnchor,
             constant: -16
         ),
     ])
 
-    return vc
+    return controller
 }

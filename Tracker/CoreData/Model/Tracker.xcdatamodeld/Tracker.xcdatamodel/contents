@@ -8,7 +8,7 @@
         <attribute name="colorHex" attributeType="String"/>
         <attribute name="emoji" attributeType="String"/>
         <attribute name="name" attributeType="String"/>
-        <attribute name="schedule" optional="YES" attributeType="Transformable" valueTransformerName="NSSecureUnarchiveFromDataTransformer"/>
+        <attribute name="schedule" optional="YES" attributeType="Transformable" valueTransformerName="WeekDaysValueTransformer"/>
         <attribute name="trackerId" attributeType="UUID" usesScalarValueType="NO"/>
         <relationship name="category" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="TrackerCategoryEntity" inverseName="trackers" inverseEntity="TrackerCategoryEntity"/>
         <relationship name="records" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="TrackerRecordEntity" inverseName="tracker" inverseEntity="TrackerRecordEntity"/>

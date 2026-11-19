@@ -8,15 +8,75 @@
 import SwiftUI
 import UIKit
 
+struct TrackerCellViewModel {
+    let id: UUID
+    let title: String
+    let emoji: String
+    let color: UIColor
+    let completedDaysText: String
+    let isCompleted: Bool
+    let isCompletionEnabled: Bool
+
+    init(
+        tracker: Tracker,
+        isCompleted: Bool,
+        completedDays: Int,
+        isCompletionEnabled: Bool = true,
+    ) {
+        self.id = tracker.id
+        self.title = tracker.name
+        self.emoji = tracker.emoji
+        self.color = tracker.color
+        self.completedDaysText = Self.formatDaysString(for: completedDays)
+        self.isCompleted = isCompleted
+        self.isCompletionEnabled = isCompletionEnabled
+    }
+
+    private static func formatDaysString(for days: Int) -> String {
+        let remainder10 = days % 10
+        let remainder100 = days % 100
+
+        if remainder100 >= 11 && remainder100 <= 19 {
+            return "\(days) дней"
+        }
+
+        switch remainder10 {
+        case 1:
+            return "\(days) день"
+        case 2, 3, 4:
+            return "\(days) дня"
+        default:
+            return "\(days) дней"
+        }
+    }
+}
+
 protocol TrackersCollectionViewCellDelegate: AnyObject {
-    func didTapCompleteButton(of cell: TrackersCollectionViewCell)
+    func didTapCompleteButton(for trackerId: UUID)
 }
 
 final class TrackersCollectionViewCell: UICollectionViewCell {
+    
+    private enum Layout {
+        static let cardCornerRadius: CGFloat = 16
+        static let cardHeightMultiplier: CGFloat = 3.0 / 5.0
+        static let inset: CGFloat = 12
+        static let emojiSize: CGFloat = 24
+        static let emojiFontSize: CGFloat = 16
+        static let titleFontSize: CGFloat = 12
+        static let buttonSize: CGFloat = 34
+        static let buttonSymbolPointSize: CGFloat = 12
+        static let bottomStackTopSpacing: CGFloat = 8
+        static let bottomInset: CGFloat = 16
+    }
+    
+    // MARK: - Private Properties
+
+        private var trackerID: UUID?
 
     // MARK: - Public Properties
 
-    static let identifier = "TrackersCollectionViewCell"
+    static let identifier = String(describing: TrackersCollectionViewCell.self)
     weak var delegate: TrackersCollectionViewCellDelegate?
 
     // MARK: - UI Elements
@@ -24,27 +84,37 @@ final class TrackersCollectionViewCell: UICollectionViewCell {
     private lazy var cardView: UIView = {
         let card = UIView()
         card.translatesAutoresizingMaskIntoConstraints = false
-        card.layer.cornerRadius = 16
+        card.layer.cornerRadius = Layout.cardCornerRadius
+        card.layer.masksToBounds = true
         return card
     }()
 
     private lazy var emojiLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        label.font = UIFont.systemFont(
+            ofSize: Layout.emojiFontSize,
+            weight: .medium
+        )
+        label.textAlignment = .center
+        label.backgroundColor = UIColor(resource: .trackerWhite)
+            .withAlphaComponent(0.3)
+        label.layer.cornerRadius = Layout.emojiSize / 2
+        label.layer.masksToBounds = true
         return label
     }()
 
     private lazy var titleLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = UIFont.systemFont(ofSize: 12, weight: .medium)
+        label.font = UIFont.systemFont(ofSize: Layout.titleFontSize, weight: .medium)
         label.textColor = UIColor(resource: .trackerWhite)
+        label.numberOfLines = 2
         return label
     }()
 
     private lazy var bottomStackView: UIStackView = {
-        let stackView = UIStackView()
+        let stackView = UIStackView(arrangedSubviews: [countLabel, plusButton])
         stackView.translatesAutoresizingMaskIntoConstraints = false
         stackView.axis = .horizontal
         stackView.distribution = .fill
@@ -57,7 +127,6 @@ final class TrackersCollectionViewCell: UICollectionViewCell {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = UIFont.systemFont(ofSize: 12, weight: .medium)
         label.textColor = UIColor(resource: .trackerBlack)
-        label.text = "0 дней"
         return label
     }()
 
@@ -65,12 +134,21 @@ final class TrackersCollectionViewCell: UICollectionViewCell {
         let button = UIButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setImage(UIImage(systemName: "plus"), for: .normal)
+        button.setPreferredSymbolConfiguration(
+            UIImage.SymbolConfiguration(
+                pointSize: Layout.buttonSymbolPointSize,
+                weight: .bold
+            ),
+            forImageIn: .normal
+        )
         button.tintColor = UIColor(resource: .trackerWhite)
-        button.layer.cornerRadius = 17
+        button.layer.cornerRadius = Layout.buttonSize / 2
         button.clipsToBounds = true
-        button.addTarget(
-            self,
-            action: #selector(completeButtonTapped),
+        button.addAction(
+            UIAction { [weak self] _ in
+                guard let self, let trackerID = self.trackerID else { return }
+                self.delegate?.didTapCompleteButton(for: trackerID)
+            },
             for: .touchUpInside
         )
         return button
@@ -100,59 +178,33 @@ final class TrackersCollectionViewCell: UICollectionViewCell {
         cardView.backgroundColor = nil
     }
 
+    // MARK: - Public Methods
+
+    func configure(with viewModel: TrackerCellViewModel)
+    {
+        trackerID = viewModel.id
+        cardView.backgroundColor = viewModel.color
+        emojiLabel.text = viewModel.emoji
+        titleLabel.text = viewModel.title
+        plusButton.backgroundColor = viewModel.color
+        countLabel.text = viewModel.completedDaysText
+
+        let imageName = viewModel.isCompleted ? "checkmark" : "plus"
+        plusButton.setImage(
+            UIImage(systemName: imageName),
+            for: .normal
+        )
+        plusButton.alpha = viewModel.isCompleted ? 0.5 : 1.0
+        plusButton.isEnabled = viewModel.isCompletionEnabled
+    }
+
     // MARK: - Private Methods
 
     private func setupView() {
         contentView.addSubviews([cardView, bottomStackView])
         cardView.addSubviews([emojiLabel, titleLabel])
-        bottomStackView.addArrangedSubview(countLabel)
-        bottomStackView.addArrangedSubview(plusButton)
     }
 
-    @objc private func completeButtonTapped() {
-        delegate?.didTapCompleteButton(of: self)
-    }
-
-    private func formatDaysString(for days: Int) -> String {
-        let remainder10 = days % 10
-        let remainder100 = days % 100
-
-        if remainder100 >= 11 && remainder100 <= 19 {
-            return "\(days) дней"
-        }
-
-        switch remainder10 {
-        case 1:
-            return "\(days) день"
-        case 2, 3, 4:
-            return "\(days) дня"
-        default:
-            return "\(days) дней"
-        }
-    }
-
-    func configure(with tracker: Tracker, isCompleted: Bool, completedDays: Int)
-    {
-        cardView.backgroundColor = tracker.color
-        emojiLabel.text = tracker.emoji
-        titleLabel.text = tracker.name
-        plusButton.backgroundColor = tracker.color
-        countLabel.text = formatDaysString(for: completedDays)
-
-        let config = UIImage.SymbolConfiguration(pointSize: 12, weight: .bold)
-        let imageName = isCompleted ? "checkmark" : "plus"
-
-        plusButton.setImage(
-            UIImage(systemName: imageName)?.withConfiguration(config),
-            for: .normal
-        )
-        plusButton.alpha = isCompleted ? 0.5 : 1.0
-
-    }
-
-}
-
-extension TrackersCollectionViewCell {
     private func setupConstraints() {
         NSLayoutConstraint.activate([
             cardView.topAnchor.constraint(equalTo: contentView.topAnchor),
@@ -164,51 +216,59 @@ extension TrackersCollectionViewCell {
             ),
             cardView.heightAnchor.constraint(
                 equalTo: contentView.heightAnchor,
-                multiplier: 3.0 / 5.0
+                multiplier: Layout.cardHeightMultiplier
             ),
 
             emojiLabel.topAnchor.constraint(
                 equalTo: cardView.topAnchor,
-                constant: 12
+                constant: Layout.inset
             ),
             emojiLabel.leadingAnchor.constraint(
                 equalTo: cardView.leadingAnchor,
-                constant: 12
+                constant: Layout.inset
             ),
-            emojiLabel.widthAnchor.constraint(equalToConstant: 24),
-            emojiLabel.heightAnchor.constraint(equalToConstant: 24),
+            emojiLabel.widthAnchor.constraint(
+                equalToConstant: Layout.emojiSize
+            ),
+            emojiLabel.heightAnchor.constraint(
+                equalToConstant: Layout.emojiSize
+            ),
 
             titleLabel.bottomAnchor.constraint(
                 equalTo: cardView.bottomAnchor,
-                constant: -12
+                constant: -Layout.inset
             ),
             titleLabel.leadingAnchor.constraint(
                 equalTo: cardView.leadingAnchor,
-                constant: 12
+                constant: Layout.inset
             ),
             titleLabel.trailingAnchor.constraint(
                 equalTo: cardView.trailingAnchor,
-                constant: -12
+                constant: -Layout.inset
             ),
 
-            plusButton.widthAnchor.constraint(equalToConstant: 34),
-            plusButton.heightAnchor.constraint(equalToConstant: 34),
+            plusButton.widthAnchor.constraint(
+                equalToConstant: Layout.buttonSize
+            ),
+            plusButton.heightAnchor.constraint(
+                equalToConstant: Layout.buttonSize
+            ),
 
             bottomStackView.topAnchor.constraint(
                 equalTo: cardView.bottomAnchor,
-                constant: 8
+                constant: Layout.bottomStackTopSpacing
             ),
             bottomStackView.leadingAnchor.constraint(
                 equalTo: contentView.leadingAnchor,
-                constant: 12
+                constant: Layout.inset
             ),
             bottomStackView.trailingAnchor.constraint(
                 equalTo: contentView.trailingAnchor,
-                constant: -12
+                constant: -Layout.inset
             ),
             bottomStackView.bottomAnchor.constraint(
                 equalTo: contentView.bottomAnchor,
-                constant: -16
+                constant: -Layout.bottomInset
             ),
         ])
     }
@@ -224,9 +284,9 @@ extension TrackersCollectionViewCell {
             ViewPreview {
                 let cell = TrackersCollectionViewCell()
                 cell.configure(
-                    with: MockTrackerData.tracker,
+                    with: TrackerCellViewModel( tracker: MockTrackerData.tracker,
                     isCompleted: false,
-                    completedDays: 0
+                    completedDays: 0)
                 )
                 return cell
             }
@@ -235,9 +295,9 @@ extension TrackersCollectionViewCell {
             ViewPreview {
                 let cell = TrackersCollectionViewCell()
                 cell.configure(
-                    with: MockTrackerData.tracker,
+                    with: TrackerCellViewModel( tracker: MockTrackerData.tracker,
                     isCompleted: true,
-                    completedDays: 4
+                    completedDays: 4)
                 )
                 return cell
             }

@@ -161,3 +161,31 @@ extension TrackerDataStore: TrackerRecordStoreDelegate {
         delegate?.trackerDataStoreDidUpdate()
     }
 }
+
+#if DEBUG
+    extension TrackerDataStore {
+        func seedMockDataIfNeeded() {
+            guard fetchCategories().isEmpty else { return }
+
+            do {
+                for category in MockTrackerData.categories {
+                    try addCategory(title: category.title)
+                    for tracker in category.trackers {
+                        try addTracker(
+                            tracker,
+                            toCategoryWithTitle: category.title
+                        )
+                    }
+                }
+
+                for record in MockTrackerData.completedTrackers {
+                    if !isTrackerCompleted(id: record.id, on: record.date) {
+                        try toggleRecord(for: record.id, on: record.date)
+                    }
+                }
+            } catch {
+                assertionFailure("Failed to seed mock data: \(error)")
+            }
+        }
+    }
+#endif

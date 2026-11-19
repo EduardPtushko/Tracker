@@ -19,7 +19,15 @@ protocol TrackerCustomizationCollectionViewDelegate: AnyObject {
     )
 }
 
-class TrackerCustomizationCollectionView: UICollectionView {
+final class TrackerCustomizationCollectionView: UICollectionView {
+    private enum Layout {
+        static let itemsPerRow: CGFloat = 6
+        static let horizontalInset: CGFloat = 18
+        static let verticalInset: CGFloat = 24
+        static let interItemSpacing: CGFloat = 5
+        static let lineSpacing: CGFloat = 0
+        static let headerHeight: CGFloat = 48
+    }
 
     private enum Section: Int, CaseIterable {
         case emoji
@@ -27,10 +35,8 @@ class TrackerCustomizationCollectionView: UICollectionView {
 
         var title: String {
             switch self {
-            case .emoji:
-                "Emoji"
-            case .colors:
-                "Цвет"
+            case .emoji: "Emoji"
+            case .colors: "Цвет"
             }
         }
     }
@@ -43,7 +49,7 @@ class TrackerCustomizationCollectionView: UICollectionView {
     private let colors: [UIColor]
     private var selectedEmojiIndex: Int?
     private var selectedColorIndex: Int?
-
+    private var lastKnownContentHeight: CGFloat = 0
     // MARK: - Init
 
     init(
@@ -64,7 +70,6 @@ class TrackerCustomizationCollectionView: UICollectionView {
     // MARK: - Lifecycles
 
     override var intrinsicContentSize: CGSize {
-        layoutIfNeeded()
         return CGSize(
             width: UIView.noIntrinsicMetric,
             height: collectionViewLayout.collectionViewContentSize.height
@@ -73,7 +78,10 @@ class TrackerCustomizationCollectionView: UICollectionView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        if bounds.size != intrinsicContentSize {
+        let currentHeight = collectionViewLayout.collectionViewContentSize
+            .height
+        if currentHeight != lastKnownContentHeight {
+            lastKnownContentHeight = currentHeight
             invalidateIntrinsicContentSize()
         }
     }
@@ -226,12 +234,15 @@ extension TrackerCustomizationCollectionView: UICollectionViewDelegateFlowLayout
         layout collectionViewLayout: UICollectionViewLayout,
         sizeForItemAt indexPath: IndexPath
     ) -> CGSize {
-        let itemsPerRow: CGFloat = 6
-        let horizontalPadding: CGFloat = 18 * 2
-        let interItemSpacing: CGFloat = 5 * (itemsPerRow - 1)
+        guard collectionView.bounds.width > 0 else { return .zero }
+
+        let totalHorizontalPadding = Layout.horizontalInset * 2
+        let totalInterItemSpacing =
+            Layout.interItemSpacing * (Layout.itemsPerRow - 1)
         let availableWidth =
-            collectionView.bounds.width - horizontalPadding - interItemSpacing
-        let side = floor(availableWidth / itemsPerRow)
+            collectionView.bounds.width - totalHorizontalPadding
+            - totalInterItemSpacing
+        let side = floor(availableWidth / Layout.itemsPerRow)
 
         return CGSize(width: side, height: side)
     }
@@ -241,7 +252,7 @@ extension TrackerCustomizationCollectionView: UICollectionViewDelegateFlowLayout
         layout collectionViewLayout: UICollectionViewLayout,
         insetForSectionAt section: Int
     ) -> UIEdgeInsets {
-        UIEdgeInsets(top: 24, left: 18, bottom: 24, right: 18)
+        UIEdgeInsets(top: Layout.verticalInset, left: Layout.horizontalInset, bottom: Layout.verticalInset, right: Layout.horizontalInset)
     }
 
     func collectionView(
@@ -249,7 +260,7 @@ extension TrackerCustomizationCollectionView: UICollectionViewDelegateFlowLayout
         layout collectionViewLayout: UICollectionViewLayout,
         minimumInteritemSpacingForSectionAt section: Int
     ) -> CGFloat {
-        5
+        Layout.interItemSpacing
     }
 
     func collectionView(
@@ -257,7 +268,7 @@ extension TrackerCustomizationCollectionView: UICollectionViewDelegateFlowLayout
         layout collectionViewLayout: UICollectionViewLayout,
         minimumLineSpacingForSectionAt section: Int
     ) -> CGFloat {
-        0
+        Layout.lineSpacing
     }
 
     func collectionView(
@@ -265,7 +276,7 @@ extension TrackerCustomizationCollectionView: UICollectionViewDelegateFlowLayout
         layout collectionViewLayout: UICollectionViewLayout,
         referenceSizeForHeaderInSection section: Int
     ) -> CGSize {
-        CGSize(width: collectionView.bounds.width, height: 48)
+        CGSize(width: collectionView.bounds.width, height: Layout.headerHeight)
     }
 }
 
@@ -275,12 +286,7 @@ extension TrackerCustomizationCollectionView: UICollectionViewDelegateFlowLayout
 
     ViewPreview {
         let grid = TrackerCustomizationCollectionView()
-
-        // Preselect one emoji and one color to inspect both active states
-        //        grid.preselect(emoji: "🌺", color: .systemBlue)
-
         return grid
     }
-
     .frame(height: 660)
 }

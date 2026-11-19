@@ -63,30 +63,24 @@ final class TrackersViewController: UIViewController {
 
     private let emptyStateView = EmptyStateView()
 
-    // MARK: - Public Properties
+    // MARK: - Private Properties
 
-    var categories: [TrackerCategory] = [] {
+    private let dataStore: TrackerDataStoreProtocol
+    private var categories: [TrackerCategory] = [] {
         didSet {
             updateVisibleTrackers()
         }
     }
-
-    var visibleCategories: [TrackerCategory] = [] {
-        didSet {
-            collectionView.reloadData()
-            updateBackgroundState()
-        }
-    }
-
-    var completedTrackers: [TrackerRecord] = []
-    var currentDate: Date = Date.now
+    private var visibleCategories: [TrackerCategory] = []
+    private var currentDate: Date = Date.now
 
     // MARK: - Init
 
-    init(categories: [TrackerCategory] = MockTrackerData.categories) {
-        self.categories = categories
-        self.completedTrackers = MockTrackerData.completedTrackers
+    init(dataStore: TrackerDataStoreProtocol = TrackerDataStore()) {
+        self.dataStore = dataStore
         super.init(nibName: nil, bundle: nil)
+        self.dataStore.delegate = self
+        self.categories = self.dataStore.fetchCategories()
     }
 
     required init?(coder: NSCoder) {
@@ -209,19 +203,32 @@ final class TrackersViewController: UIViewController {
         let currentDay = Calendar.current.component(.weekday, from: currentDate)
         guard let weekDay = WeekDay(rawValue: currentDay) else { return }
 
-        let searchText = searchController.searchBar.text?.lowercased() ?? ""
+        let searchText = (searchController.searchBar.text?.lowercased() ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        let categories = dataStore.fetchCategories()
 
         visibleCategories = categories.compactMap({ category in
             let filteredTrackers = category.trackers.filter { tracker in
-                let matchesDate: Bool
+
                 let matchesSearch =
                     searchText.isEmpty
                     || tracker.name.lowercased().contains(searchText)
 
+                let matchesDate: Bool
+
                 if let schedule = tracker.schedule {
                     matchesDate = schedule.contains(weekDay)
                 } else {
-                    matchesDate = true
+                    let isCompletedOnSelectedDate =
+                        dataStore.isTrackerCompleted(
+                            id: tracker.id,
+                            on: currentDate
+                        )
+                    let isCompletedEver =
+                        dataStore.completedDaysCount(for: tracker.id) > 0
+                    matchesDate = isCompletedOnSelectedDate || !isCompletedEver
                 }
                 return matchesDate && matchesSearch
             }
@@ -233,11 +240,13 @@ final class TrackersViewController: UIViewController {
                     trackers: filteredTrackers
                 )
         })
+        collectionView.reloadData()
+        updateBackgroundState()
     }
 
     @objc private func addTrackerButtonTapped() {
         let chooseTrackerViewController = TrackerTypeSelectionViewController(
-            delegate: self
+            dataStore: dataStore
         )
 
         let newTrackerViewController = UINavigationController(
@@ -252,7 +261,6 @@ final class TrackersViewController: UIViewController {
 
         updateVisibleTrackers()
     }
-
 }
 
 // MARK: - UICollectionViewDataSource
@@ -287,20 +295,27 @@ extension TrackersViewController: UICollectionViewDataSource {
         ]
         cell.delegate = self
 
-        let isCompletedToday = completedTrackers.contains {
-            $0.id == tracker.id
-                && Calendar.current.isDate($0.date, inSameDayAs: currentDate)
-        }
-        let completedDaysCount = completedTrackers.filter {
-            $0.id == tracker.id
-        }.count
-
-        cell.configure(
-            with: tracker,
-            isCompleted: isCompletedToday,
-            completedDays: completedDaysCount
+        let isCompletedToday = dataStore.isTrackerCompleted(
+            id: tracker.id,
+            on: currentDate
         )
+        let completedDaysCount = dataStore.completedDaysCount(for: tracker.id)
+        let isFutureDate =
+            Calendar.current.compare(
+                currentDate,
+                to: Date(),
+                toGranularity: .day
+            ) == .orderedDescending
 
+        let viewModel = TrackerCellViewModel(
+            tracker: tracker,
+            isCompleted: isCompletedToday,
+            completedDays: completedDaysCount,
+            isCompletionEnabled: !isFutureDate
+        )
+        cell.configure(
+            with: viewModel
+        )
         return cell
     }
 
@@ -380,83 +395,45 @@ extension TrackersViewController: UISearchResultsUpdating {
 // MARK: - TrackersCollectionViewCellDelegate
 
 extension TrackersViewController: TrackersCollectionViewCellDelegate {
-    func didTapCompleteButton(of cell: TrackersCollectionViewCell) {
-        guard let indexPath = collectionView.indexPath(for: cell) else {
-            return
-        }
+    func didTapCompleteButton(for trackerId: UUID) {
 
-        let tracker = visibleCategories[indexPath.section].trackers[
-            indexPath.row
-        ]
-        if currentDate > Date() && !Calendar.current.isDateInToday(currentDate)
-        {
-            return
+        do {
+            try dataStore.toggleRecord(for: trackerId, on: currentDate)
+        } catch {
+            assertionFailure(
+                "Failed to toggleRecord: \(error)"
+            )
         }
-
-        let index = completedTrackers.firstIndex { record in
-            record.id == tracker.id
-                && Calendar.current.isDate(
-                    record.date,
-                    inSameDayAs: currentDate
-                )
-        }
-
-        if let index {
-            completedTrackers.remove(at: index)
-        } else {
-            let trackerRecord = TrackerRecord(id: tracker.id, date: currentDate)
-            completedTrackers.append(trackerRecord)
-        }
-        collectionView.reloadItems(at: [indexPath])
     }
-
 }
 
-// MARK: - ConfigureTrackerViewControllerDelegate
+// MARK: - TrackerDataStoreDelegate
 
-extension TrackersViewController: ConfigureTrackerViewControllerDelegate {
-    func didCreateTracker(_ tracker: Tracker, in categoryTitle: String) {
-        if let index = categories.firstIndex(where: {
-            $0.title == categoryTitle
-        }) {
-            var updatedTrackers = categories[index].trackers
-            updatedTrackers.append(tracker)
-
-            categories[index] = TrackerCategory(
-                title: categoryTitle,
-                trackers: updatedTrackers
-            )
-        } else {
-            let newCategory = TrackerCategory(
-                title: categoryTitle,
-                trackers: [tracker]
-            )
-            categories.append(newCategory)
-        }
+extension TrackersViewController: TrackerDataStoreDelegate {
+    func trackerDataStoreDidUpdate() {
+        updateVisibleTrackers()
     }
-
 }
 
 // MARK: - Previews
 
 #Preview("Categories") {
-    let navController = UINavigationController(
-        rootViewController:
-            TrackersViewController()
-    )
-    navController.navigationBar.prefersLargeTitles = true
-
-    return navController
-}
-
-#Preview("Empty categories") {
-    let trackerController = TrackersViewController()
+    let store = TrackerDataStore(context: CoreDataStack.preview.viewContext)
+    let trackerController = TrackersViewController(dataStore: store)
     let navController = UINavigationController(
         rootViewController: trackerController
     )
     navController.navigationBar.prefersLargeTitles = true
-    trackerController.categories = []
-    trackerController.completedTrackers = []
+    return navController
+}
 
+#Preview("Empty categories") {
+    let emptyStack = CoreDataStack(inMemory: true)
+    let emptyStore = TrackerDataStore(context: emptyStack.viewContext)
+    let trackerController = TrackersViewController(dataStore: emptyStore)
+    let navController = UINavigationController(
+        rootViewController: trackerController
+    )
+    navController.navigationBar.prefersLargeTitles = true
     return navController
 }

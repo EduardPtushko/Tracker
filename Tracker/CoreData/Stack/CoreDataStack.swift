@@ -11,13 +11,17 @@ final class CoreDataStack {
 
     static let shared = CoreDataStack()
     let persistentContainer: NSPersistentContainer
+    
+    private static let registerTransformers: Void = {
+            WeekDaysValueTransformer.register()
+        }()
 
     var viewContext: NSManagedObjectContext {
         persistentContainer.viewContext
     }
 
     init(modelName: String = "Tracker", inMemory: Bool = false) {
-        WeekDaysValueTransformer.register()
+        _ = Self.registerTransformers
 
         persistentContainer = NSPersistentContainer(name: modelName)
 
@@ -58,3 +62,14 @@ final class CoreDataStack {
         }
     }
 }
+
+#if DEBUG
+extension CoreDataStack {
+    static let preview: CoreDataStack = {
+        let stack = CoreDataStack(inMemory: true)
+        let store = TrackerDataStore(context: stack.viewContext)
+        store.seedMockDataIfNeeded()
+        return stack
+    }()
+}
+#endif
