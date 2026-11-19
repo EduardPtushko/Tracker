@@ -5,17 +5,24 @@
 //  Created by Eduard Ptushko on 02.11.2026.
 //
 
-import UIKit
 import SwiftUI
+import UIKit
 
 final class CategoryHeader: UICollectionReusableView {
 
-    static let reuseIdentifier = "CategoryHeader"
+    static let reuseIdentifier = String(describing: CategoryHeader.self)
+    
+    private enum Layout {
+           static let fontSize: CGFloat = 19
+           static let defaultHorizontalInset: CGFloat = 28
+           static let topInset: CGFloat = 16
+           static let bottomInset: CGFloat = 12
+       }
 
-    let titleLabel: UILabel = {
+    private let titleLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 19, weight: .bold)
-        label.textColor = .black
+        label.font = .systemFont(ofSize: Layout.fontSize, weight: .bold)
+        label.textColor = .trackerBlack
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -28,16 +35,16 @@ final class CategoryHeader: UICollectionReusableView {
         NSLayoutConstraint.activate([
             titleLabel.leadingAnchor.constraint(
                 equalTo: leadingAnchor,
-                constant: 28
+                constant: Layout.defaultHorizontalInset
             ),
-            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 16),
+            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: Layout.topInset),
             titleLabel.bottomAnchor.constraint(
                 equalTo: bottomAnchor,
-                constant: -12
+                constant: -Layout.bottomInset
             ),
             titleLabel.trailingAnchor.constraint(
                 equalTo: trailingAnchor,
-                constant: -28
+                constant: -Layout.defaultHorizontalInset
             ),
         ])
     }
@@ -45,16 +52,26 @@ final class CategoryHeader: UICollectionReusableView {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        titleLabel.text = nil
+    }
+
+    func configure(with title: String) {
+        titleLabel.text = title
+    }
 }
+
+// MARK: - Preview
 
 #Preview("Category Header") {
     ViewPreview {
         let header = CategoryHeader()
-        header.titleLabel.text = "Категории"
+        header.configure(with: "Категории")
         header.backgroundColor = .systemGray6
         return header
     }
     .frame(height: 60)
     .frame(maxWidth: .infinity)
 }
-
